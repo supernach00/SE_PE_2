@@ -71,6 +71,7 @@
 #define configUSE_MUTEXES                        1
 #define configQUEUE_REGISTRY_SIZE                8
 #define configUSE_RECURSIVE_MUTEXES              1
+#define configUSE_APPLICATION_TASK_TAG           1
 #define configUSE_COUNTING_SEMAPHORES            1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION  0
 
@@ -135,6 +136,17 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 header file. */
 /* USER CODE BEGIN 1 */
 #define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );}
+
+/* Trackeo para el analizador logico */
+void callback_in(int);
+void callback_out(int);
+#define traceTASK_SWITCHED_IN() callback_in((int)pxCurrentTCB->pxTaskTag)
+#define traceTASK_SWITCHED_OUT() callback_out((int)pxCurrentTCB->pxTaskTag)
+#define TAG_TASK_IDLE 0
+#define TAG_TASK_UI 1
+#define TAG_TASK_INPUTS 2
+#define TAG_TASK_MONITOR 2
+
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
@@ -147,6 +159,8 @@ standard names. */
 #define USE_CUSTOM_SYSTICK_HANDLER_IMPLEMENTATION 0
 
 /* USER CODE BEGIN Defines */
+
+
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 /* USER CODE END Defines */
 

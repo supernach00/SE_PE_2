@@ -59,6 +59,12 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BOTON_ENCODER_Pin GPIO_PIN_3
 #define BOTON_ENCODER_GPIO_Port GPIOA
+#define HOOK1_Pin GPIO_PIN_0
+#define HOOK1_GPIO_Port GPIOB
+#define HOOK2_Pin GPIO_PIN_1
+#define HOOK2_GPIO_Port GPIOB
+#define HOOK3_Pin GPIO_PIN_10
+#define HOOK3_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

@@ -25,9 +25,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdint.h>
-#include "ssd1306.h"
-#include "graphics.h"
 #include "ui.h"
+#include "monitor.h"
 
 /* USER CODE END Includes */
 
@@ -59,20 +58,31 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for oledTask */
-osThreadId_t oledTaskHandle;
-const osThreadAttr_t oledTask_attributes = {
-  .name = "oledTask",
+/* Definitions for uiTask */
+osThreadId_t uiTaskHandle;
+const osThreadAttr_t uiTask_attributes = {
+  .name = "uiTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
-
 };
-/* Definitions for encoderTask */
-osThreadId_t encoderTaskHandle;
-const osThreadAttr_t encoderTask_attributes = {
-  .name = "encoderTask",
+/* Definitions for inputsTask */
+osThreadId_t inputsTaskHandle;
+const osThreadAttr_t inputsTask_attributes = {
+  .name = "inputsTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for monitorTask */
+osThreadId_t monitorTaskHandle;
+const osThreadAttr_t monitorTask_attributes = {
+  .name = "monitorTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for uiQueue */
+osMessageQueueId_t uiQueueHandle;
+const osMessageQueueAttr_t uiQueue_attributes = {
+  .name = "uiQueue"
 };
 /* USER CODE BEGIN PV */
 volatile int16_t encoder = 0;
@@ -94,11 +104,14 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM1_Init(void);
 void StartDefaultTask(void *argument);
-void oledEntry(void *argument);
-void encoderEntry(void *argument);
+void uiEntry(void *argument);
+void inputsEntry(void *argument);
+void monitorEntry(void *argument);
 
 /* USER CODE BEGIN PFP */
 void UI_FSM_Switch(UI_t *ui, Evento_t evento);
+void callback_in(int tag);
+void callback_out(int tag);
 
 /* USER CODE END PFP */
 
@@ -157,6 +170,10 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of uiQueue */
+  uiQueueHandle = osMessageQueueNew (10, 4, &uiQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -165,11 +182,14 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of oledTask */
-  oledTaskHandle = osThreadNew(oledEntry, NULL, &oledTask_attributes);
+  /* creation of uiTask */
+  uiTaskHandle = osThreadNew(uiEntry, NULL, &uiTask_attributes);
 
-  /* creation of encoderTask */
-  encoderTaskHandle = osThreadNew(encoderEntry, NULL, &encoderTask_attributes);
+  /* creation of inputsTask */
+  inputsTaskHandle = osThreadNew(inputsEntry, NULL, &inputsTask_attributes);
+
+  /* creation of monitorTask */
+  monitorTaskHandle = osThreadNew(monitorEntry, NULL, &monitorTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -335,11 +355,21 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, HOOK1_Pin|HOOK2_Pin|HOOK3_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : BOTON_ENCODER_Pin */
   GPIO_InitStruct.Pin = BOTON_ENCODER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BOTON_ENCODER_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : HOOK1_Pin HOOK2_Pin HOOK3_Pin */
+  GPIO_InitStruct.Pin = HOOK1_Pin|HOOK2_Pin|HOOK3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -347,6 +377,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/* Funciones para el analizador logico */
+void callback_in(int tag){
+	switch (tag){
+	case TAG_TASK_IDLE: HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET);break;
+	case TAG_TASK_INPUTS: HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET);break;
+	case TAG_TASK_UI: HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET);break;
+	}
+}
+
+void callback_out(int tag){
+	switch (tag){
+	case TAG_TASK_IDLE: HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_INPUTS: HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_UI: HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_RESET);break;
+	}
+}
 
 /* USER CODE END 4 */
 
@@ -375,55 +422,34 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_oledEntry */
-void oledEntry(void *argument)
+void uiEntry(void *argument)
 {
   /* USER CODE BEGIN oledEntry */
-	SSD1306_Init();
-	SSD1306_Clear();
+
+  /* Seteo el tag para el analizador logico */
+    vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_UI);
+	ui_init(&ui1);
+
+	Evento_t evt;
+
   /* Infinite loop */
   for(;;)
   {
-//    SSD1306_GotoXY (10,10); // goto 10, 10
-//    sprintf(texto, "Pos: %d", posicion_encoder);
-//    SSD1306_Puts (texto , &Font_7x10, 1);
+	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
 
-	if (ui1.ui_actualizar_oled){
+			ui_FSM_switch(&ui1, evt);
 
-		ui1.ui_actualizar_oled = 0;
-		SSD1306_Clear();
-		switch (ui1.ui_estado){
-		case ESTADO_INICIO:
-			switch(ui1.ui_seleccion){
-			case SEL_MEDIDA:
-				SSD1306_DrawBitmap(5, 7, cubo_bmp, 11, 11, 1);
-				break;
-			case SEL_CONFIG:
-				SSD1306_DrawBitmap(25, 7, cubo_bmp, 11, 11, 1);
-				break;
-			case SEL_DIAG:
-				SSD1306_DrawBitmap(45, 7, cubo_bmp, 11, 11, 1);
-				break;
-			default:
-				break;
-			}
-
-		default:
-			break;
 		}
+//            UI_FSM_Switch(&ui1, evt);
+	if (ui1.ui_update){
 
-		SSD1306_UpdateScreen(); // update screen
-
+		ui1.ui_update = 0;
+		ui_update_oled(&ui1);
 	}
-
-//    SSD1306_DrawBitmap(18, 7, medida_bmp, 42, 11, 1);
-//    SSD1306_DrawBitmap(5, 25, config_bmp, 40, 11, 1);
-//    SSD1306_DrawBitmap(5, 44, diag_bmp, 37, 11, 1);
-
-//    SSD1306_DrawBitmap(0, 0, grid_bmp, 128, 64, 1);
+  }
 
     osDelay(30);
 
-  }
   /* USER CODE END oledEntry */
 }
 
@@ -434,11 +460,24 @@ void oledEntry(void *argument)
 * @retval None
 */
 /* USER CODE END Header_encoderEntry */
-void encoderEntry(void *argument)
+void inputsEntry(void *argument)
 {
   /* USER CODE BEGIN encoderEntry */
+
+  /* Parametros debouncer boton */
+  #define DEBOUNCER_MAX 6
+  uint8_t contador_debouncer = 0;
+
+  /* Seteo el tag para el analizador logico */
+  vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_INPUTS);
+
+  /* Inicializacion cosas del encoder */
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
   __HAL_TIM_SET_COUNTER(&htim1, 0);
+
+  /* Buffer para el uiQueue */
+  Evento_t evt;
+
   /* Infinite loop */
   for(;;)
   {
@@ -447,22 +486,85 @@ void encoderEntry(void *argument)
 
 	if (encoder > encoder_prev + 2) {
 		encoder_prev = encoder;
-		UI_FSM_Switch(&ui1, EV_UP);
+		evt = EV_DOWN;
+		osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
 	}
 	else if (encoder < encoder_prev - 2) {
 		encoder_prev = encoder;
-		UI_FSM_Switch(&ui1, EV_DOWN);
+		evt = EV_UP;
+		osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
 	}
 
-	// Check boton
+	// Check boton TODO: mejorar el debounce, hice uno basicon. No complicarla igual xq queda feo.
+	if (!HAL_GPIO_ReadPin(BOTON_ENCODER_GPIO_Port, BOTON_ENCODER_Pin)){
 
-	if (!HAL_GPIO_ReadPin(BOTON_ENCODER_GPIO_Port, BOTON_ENCODER_Pin))
-		UI_FSM_Switch(&ui1, EV_BOTON_ENCODER);
+		contador_debouncer++;
+
+		if (contador_debouncer > DEBOUNCER_MAX){
+			contador_debouncer = 0;
+			evt = EV_BOTON_ENCODER;
+			osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
+		}
+	}
+
 
 	osDelay(20);
 
   }
   /* USER CODE END encoderEntry */
+}
+
+/* USER CODE BEGIN Header_monitorEntry */
+/**
+* @brief Function implementing the monitorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_monitorEntry */
+void monitorEntry(void *argument)
+{
+  /* USER CODE BEGIN monitorEntry */
+  /* Seteo el tag para el analizador logico */
+  vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_MONITOR);
+
+  /* Cosas para advertir cuando se esta llenando mucho el heap.
+   * La advertencia se pasa a uiTask mediante la cola de eventos (uiQueue)
+   */
+  #define LIMITE_ADVERTENCIA 2
+  Evento_t evt = EV_HEAP_ADVERTENCIA;
+
+  /* Cosas para enviar datos de monitoreo a uiTask
+   * Los datos del sistema global se envian por la cola monitorSistemaQueue
+   * Los datos de las tareas se envian por la cola monitorTasksQueue
+   * TODO: falta crear estas colas en el mx, pero ya se definieron formatos en monitor.h
+   */
+  MonitorDataTasks_t data_tasks;
+  MonitorDataSistema_t data_sistema;
+
+  /* Buffers de datos */
+
+  size_t heap_libre = xPortGetFreeHeapSize();
+  size_t heap_minimo = xPortGetMinimumEverFreeHeapSize();
+
+  /* Infinite loop */
+  for(;;)
+  {
+	 /* Recopilacion datos del sistema */
+	 heap_libre = xPortGetFreeHeapSize();
+	 heap_minimo = xPortGetMinimumEverFreeHeapSize();
+	 if (heap_libre < LIMITE_ADVERTENCIA){
+			osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
+	 }
+
+// TODO: Enviar datos del sistema a uiTask a treaves de la cola correspondiente
+
+	 /* Recopilacion datos del sistema */
+// TODO: Hacer esta seccion
+//	 osMessageQueuePut(monitorSistemaQueueHandle, &data_sistema, NULL, 0);
+//	  uint32_t stackUI = uxTaskGetStackHighWaterMark(uiTaskHandle);
+    osDelay(1);
+  }
+  /* USER CODE END monitorEntry */
 }
 
 /**
