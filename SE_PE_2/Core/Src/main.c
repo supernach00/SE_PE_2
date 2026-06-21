@@ -62,7 +62,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for inputsTask */
@@ -76,13 +76,18 @@ const osThreadAttr_t inputsTask_attributes = {
 osThreadId_t monitorTaskHandle;
 const osThreadAttr_t monitorTask_attributes = {
   .name = "monitorTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for uiQueue */
 osMessageQueueId_t uiQueueHandle;
 const osMessageQueueAttr_t uiQueue_attributes = {
   .name = "uiQueue"
+};
+/* Definitions for monitorQueue */
+osMessageQueueId_t monitorQueueHandle;
+const osMessageQueueAttr_t monitorQueue_attributes = {
+  .name = "monitorQueue"
 };
 /* USER CODE BEGIN PV */
 volatile int16_t encoder = 0;
@@ -94,7 +99,7 @@ UI_t ui1 = {
 	1
 };
 
-char texto[100];
+MonitorData_t data_monitor = {0};
 
 /* USER CODE END PV */
 
@@ -104,12 +109,12 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM1_Init(void);
 void StartDefaultTask(void *argument);
-void uiEntry(void *argument);
-void inputsEntry(void *argument);
+void oledEntry(void *argument);
+void encoderEntry(void *argument);
 void monitorEntry(void *argument);
 
 /* USER CODE BEGIN PFP */
-void UI_FSM_Switch(UI_t *ui, Evento_t evento);
+void UI_FSM_Switch(UI_t *ui, Evento_e evento);
 void callback_in(int tag);
 void callback_out(int tag);
 
@@ -174,6 +179,9 @@ int main(void)
   /* creation of uiQueue */
   uiQueueHandle = osMessageQueueNew (10, 4, &uiQueue_attributes);
 
+  /* creation of monitorQueue */
+  monitorQueueHandle = osMessageQueueNew (1, 56, &monitorQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -183,10 +191,10 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of uiTask */
-  uiTaskHandle = osThreadNew(uiEntry, NULL, &uiTask_attributes);
+  uiTaskHandle = osThreadNew(oledEntry, NULL, &uiTask_attributes);
 
   /* creation of inputsTask */
-  inputsTaskHandle = osThreadNew(inputsEntry, NULL, &inputsTask_attributes);
+  inputsTaskHandle = osThreadNew(encoderEntry, NULL, &inputsTask_attributes);
 
   /* creation of monitorTask */
   monitorTaskHandle = osThreadNew(monitorEntry, NULL, &monitorTask_attributes);
@@ -422,33 +430,47 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_oledEntry */
-void uiEntry(void *argument)
+void oledEntry(void *argument)
 {
   /* USER CODE BEGIN oledEntry */
 
   /* Seteo el tag para el analizador logico */
     vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_UI);
-	ui_init(&ui1);
+	ui_init(&ui1, &data_monitor);
 
-	Evento_t evt;
+  /* Buffer para uiQueue */
+  Evento_e evt;
 
   /* Infinite loop */
   for(;;)
   {
+
+	/* Leo todas las colas */
+
+	/*uiQueue, cola de eventos, actualiza estado del sistema*/
 	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
 
 			ui_FSM_switch(&ui1, evt);
 
-		}
-//            UI_FSM_Switch(&ui1, evt);
+	}
+
+	/*monitorQueue, actualiza datos de diagnostico*/
+
+	osMessageQueueGet(monitorQueueHandle, &data_monitor, NULL, 0);
+
+	/* Actualizo pantalla si es necesario*/
 	if (ui1.ui_update){
 
 		ui1.ui_update = 0;
-		ui_update_oled(&ui1);
+		ui_update_oled(&ui1, &data_monitor);
 	}
-  }
 
     osDelay(30);
+    /* Buffer para monitorQueue*/
+
+
+  }
+
 
   /* USER CODE END oledEntry */
 }
@@ -460,7 +482,7 @@ void uiEntry(void *argument)
 * @retval None
 */
 /* USER CODE END Header_encoderEntry */
-void inputsEntry(void *argument)
+void encoderEntry(void *argument)
 {
   /* USER CODE BEGIN encoderEntry */
 
@@ -476,7 +498,7 @@ void inputsEntry(void *argument)
   __HAL_TIM_SET_COUNTER(&htim1, 0);
 
   /* Buffer para el uiQueue */
-  Evento_t evt;
+  Evento_e evt;
 
   /* Infinite loop */
   for(;;)
@@ -531,38 +553,41 @@ void monitorEntry(void *argument)
    * La advertencia se pasa a uiTask mediante la cola de eventos (uiQueue)
    */
   #define LIMITE_ADVERTENCIA 2
-  Evento_t evt = EV_HEAP_ADVERTENCIA;
+  Evento_e evt = EV_HEAP_ADVERTENCIA;
 
-  /* Cosas para enviar datos de monitoreo a uiTask
-   * Los datos del sistema global se envian por la cola monitorSistemaQueue
-   * Los datos de las tareas se envian por la cola monitorTasksQueue
-   * TODO: falta crear estas colas en el mx, pero ya se definieron formatos en monitor.h
-   */
-  MonitorDataTasks_t data_tasks;
-  MonitorDataSistema_t data_sistema;
-
-  /* Buffers de datos */
-
-  size_t heap_libre = xPortGetFreeHeapSize();
-  size_t heap_minimo = xPortGetMinimumEverFreeHeapSize();
+  /* Buffers para cargar datos de monitoreo */
+  MonitorData_t data_monitor_buffer;
+  size_t heap_free = xPortGetFreeHeapSize();
+  size_t heap_min = xPortGetMinimumEverFreeHeapSize();
 
   /* Infinite loop */
   for(;;)
   {
-	 /* Recopilacion datos del sistema */
-	 heap_libre = xPortGetFreeHeapSize();
-	 heap_minimo = xPortGetMinimumEverFreeHeapSize();
-	 if (heap_libre < LIMITE_ADVERTENCIA){
-			osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
+	 /* Recopilacion y carga de datos del sistema en data_monitor */
+
+	 /* Check de si estoy pasando los limites */
+	 heap_free = xPortGetFreeHeapSize();
+	 if (heap_free < LIMITE_ADVERTENCIA){
+			osMessageQueuePut(uiQueueHandle, &evt, 0, 0); /* Si estamos complicados de heap, envio evento de alerta al ui*/
 	 }
 
-// TODO: Enviar datos del sistema a uiTask a treaves de la cola correspondiente
+	 heap_min = xPortGetMinimumEverFreeHeapSize();
 
-	 /* Recopilacion datos del sistema */
-// TODO: Hacer esta seccion
-//	 osMessageQueuePut(monitorSistemaQueueHandle, &data_sistema, NULL, 0);
-//	  uint32_t stackUI = uxTaskGetStackHighWaterMark(uiTaskHandle);
-    osDelay(1);
+	 data_monitor_buffer.system_data.sys_heap_free = heap_free;
+	 data_monitor_buffer.system_data.sys_heap_min = heap_min;
+
+	 /* Recopilacion de datos de tareas*/
+	 data_monitor_buffer.tasks_data.tasks[0].task_stack_min = uxTaskGetStackHighWaterMark(monitorTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[1].task_stack_min = uxTaskGetStackHighWaterMark(uiTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[2].task_stack_min = uxTaskGetStackHighWaterMark(inputsTaskHandle);
+//	 data_monitor_buffer.tasks_data.tasks[3].task_stack_min = uxTaskGetStackHighWaterMark(muestreoTaskHandle);
+
+
+
+	 /* Envio el paquete a ui a traves de monitorQueue */
+     osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
+
+    osDelay(100); // a mimir
   }
   /* USER CODE END monitorEntry */
 }

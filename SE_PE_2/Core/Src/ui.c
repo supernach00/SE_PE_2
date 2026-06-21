@@ -1,14 +1,21 @@
+#include <string.h>
 #include "ui.h"
 #include "graphics.h"
 #include "ssd1306.h"
 
-void ui_init(UI_t *ui){
+void ui_init(UI_t *ui, MonitorData_t *data_monitor){
 	SSD1306_Init();
 	SSD1306_Clear();
-	ui_update_oled(ui);
+	ui_update_oled(ui, data_monitor);
 }
 
-void ui_update_oled(UI_t *ui){
+//void ui_update_data(char *data_buffer, MonitorData_t *data_monitor){
+//
+//    strncpy(data_monitor->data_system, data_buffer, sizeof(data_monitor->data_system));
+//
+//}
+
+void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 
 		SSD1306_Clear();
 
@@ -56,7 +63,7 @@ void ui_update_oled(UI_t *ui){
 //    SSD1306_DrawBitmap(0, 0, grid_bmp, 128, 64, 1);
 
 
-void ui_FSM_switch(UI_t *ui, Evento_t evento){
+void ui_FSM_switch(UI_t *ui, Evento_e evento){
 
 	switch(ui->ui_estado){
 	case ESTADO_INICIO:

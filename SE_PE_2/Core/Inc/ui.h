@@ -2,6 +2,7 @@
 #define UI_H
 
 #include <stdint.h>
+#include "monitor.h"
 
 typedef enum {
 
@@ -10,7 +11,7 @@ typedef enum {
 		ESTADO_DIAG,
 		ESTADO_MEDIDA
 
-}Estado_t;
+}Estado_e;
 
 typedef enum {
 
@@ -20,7 +21,7 @@ typedef enum {
 		EV_BOTON_ENCODER,
 		EV_HEAP_ADVERTENCIA
 
-}Evento_t;
+}Evento_e;
 
 typedef enum {
 
@@ -32,16 +33,16 @@ typedef enum {
 
 typedef struct {
 
-		Estado_t ui_estado;
-		Seleccion_t ui_seleccion;
-		uint8_t ui_update;
+	Estado_e ui_estado;
+	Seleccion_t ui_seleccion;
+	uint8_t ui_update;
 
 }UI_t;
 
-
-void ui_FSM_switch(UI_t *ui, Evento_t evento);
-void ui_update_oled(UI_t *ui);
-void ui_init(UI_t *ui);
+void ui_FSM_switch(UI_t *ui, Evento_e evento);
+void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor);
+void ui_update_data(char *data_buffer, MonitorData_t *data_monitor);
+void ui_init(UI_t *ui, MonitorData_t *data_monitor);
 
 static inline void ui_up(UI_t *ui, int MAX)
 {
@@ -57,6 +58,5 @@ static inline void ui_down(UI_t *ui)
         ui->ui_seleccion--;
     }
 }
-
 
 #endif
