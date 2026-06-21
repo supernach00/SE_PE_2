@@ -364,7 +364,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, HOOK1_Pin|HOOK2_Pin|HOOK3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, HOOK1_Pin|HOOK2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, HOOK3_Pin|HOOK4_Pin|HOOK5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BOTON_ENCODER_Pin */
   GPIO_InitStruct.Pin = BOTON_ENCODER_Pin;
@@ -372,8 +375,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BOTON_ENCODER_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HOOK1_Pin HOOK2_Pin HOOK3_Pin */
-  GPIO_InitStruct.Pin = HOOK1_Pin|HOOK2_Pin|HOOK3_Pin;
+  /*Configure GPIO pins : HOOK1_Pin HOOK2_Pin */
+  GPIO_InitStruct.Pin = HOOK1_Pin|HOOK2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : HOOK3_Pin HOOK4_Pin HOOK5_Pin */
+  GPIO_InitStruct.Pin = HOOK3_Pin|HOOK4_Pin|HOOK5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -387,22 +397,30 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* Funciones para el analizador logico */
-void callback_in(int tag){
-	switch (tag){
-	case TAG_TASK_IDLE: HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET);break;
-	case TAG_TASK_INPUTS: HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET);break;
-	case TAG_TASK_UI: HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET);break;
-	}
+void callback_in(int tag)
+{
+    switch (tag)
+    {
+        case TAG_TASK_IDLE:     HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET); break;
+        case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET); break;
+        case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET); break;
+        case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK4_Pin, GPIO_PIN_SET); break;
+        case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
+        default: break;
+    }
 }
 
 void callback_out(int tag){
 	switch (tag){
-	case TAG_TASK_IDLE: HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_INPUTS: HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_UI: HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_RESET);break;
+
+	case TAG_TASK_IDLE:        HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_INPUTS:      HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_UI:          HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_MONITOR:     HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK4_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_MUESTREO:    HAL_GPIO_WritePin(HOOK5_GPIO_Port, HOOK5_Pin, GPIO_PIN_RESET);break;
+	default: break;
 	}
 }
-
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -441,12 +459,16 @@ void oledEntry(void *argument)
   /* Buffer para uiQueue */
   Evento_e evt;
 
+  uint32_t tiempo_inicio;
+
   /* Infinite loop */
   for(;;)
   {
 
-	/* Leo todas las colas */
+    /* Guardo tiempo de inicio para monitor */
+	tiempo_inicio = HAL_GetTick();
 
+	/* Leo todas las colas */
 	/*uiQueue, cola de eventos, actualiza estado del sistema*/
 	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
 
@@ -455,8 +477,7 @@ void oledEntry(void *argument)
 	}
 
 	/*monitorQueue, actualiza datos de diagnostico*/
-
-	osMessageQueueGet(monitorQueueHandle, &data_monitor, NULL, 0);
+	osMessageQueueGet(monitorQueueHandle, &data_monitor_buffer, NULL, 0);
 
 	/* Actualizo pantalla si es necesario*/
 	if (ui1.ui_update){
@@ -464,6 +485,10 @@ void oledEntry(void *argument)
 		ui1.ui_update = 0;
 		ui_update_oled(&ui1, &data_monitor);
 	}
+
+    /* Guardo delta de tiempo para monitor */
+	/* TODO: ponerle mutex a esto */
+	data_monitor.tasks_data.tasks[uiTaskID].delta = HAL_GetTick() - tiempo_inicio;
 
     osDelay(30);
     /* Buffer para monitorQueue*/

@@ -149,9 +149,10 @@ void callback_out(int);
 #define traceTASK_SWITCHED_IN() callback_in((int)pxCurrentTCB->pxTaskTag)
 #define traceTASK_SWITCHED_OUT() callback_out((int)pxCurrentTCB->pxTaskTag)
 #define TAG_TASK_IDLE 0
-#define TAG_TASK_UI 1
-#define TAG_TASK_INPUTS 2
-#define TAG_TASK_MONITOR 2
+#define TAG_TASK_INPUTS 1
+#define TAG_TASK_UI 2
+#define TAG_TASK_MONITOR 3
+#define TAG_TASK_MUESTREO 4
 
 /* USER CODE END 1 */
 
