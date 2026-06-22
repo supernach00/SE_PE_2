@@ -459,6 +459,10 @@ void oledEntry(void *argument)
   /* Buffer para uiQueue */
   Evento_e evt;
 
+  /* Buffer para monitorQueue */
+  MonitorData_t data_monitor_buffer;
+
+  /* Cosas para monitor*/
   uint32_t tiempo_inicio;
 
   /* Infinite loop */
@@ -483,7 +487,7 @@ void oledEntry(void *argument)
 	if (ui1.ui_update){
 
 		ui1.ui_update = 0;
-		ui_update_oled(&ui1, &data_monitor);
+		ui_update_oled(&ui1, &data_monitor_buffer);
 	}
 
     /* Guardo delta de tiempo para monitor */
@@ -602,17 +606,13 @@ void monitorEntry(void *argument)
 	 data_monitor_buffer.system_data.sys_heap_min = heap_min;
 
 	 /* Recopilacion de datos de tareas*/
-	 data_monitor_buffer.tasks_data.tasks[0].task_stack_min = uxTaskGetStackHighWaterMark(monitorTaskHandle);
-	 data_monitor_buffer.tasks_data.tasks[1].task_stack_min = uxTaskGetStackHighWaterMark(uiTaskHandle);
-	 data_monitor_buffer.tasks_data.tasks[2].task_stack_min = uxTaskGetStackHighWaterMark(inputsTaskHandle);
-//	 data_monitor_buffer.tasks_data.tasks[3].task_stack_min = uxTaskGetStackHighWaterMark(muestreoTaskHandle);
-
-
+	 uint32_t free_stack = osThreadGetStackSpace(uiTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free = free_stack;
 
 	 /* Envio el paquete a ui a traves de monitorQueue */
      osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
 
-    osDelay(100); // a mimir
+     osDelay(100); // a mimir
   }
   /* USER CODE END monitorEntry */
 }
