@@ -397,23 +397,29 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* Funciones para el analizador logico */
+uint32_t FU_acc = 0;
+uint32_t FU_time_delta = 0;
 void callback_in(int tag)
 {
-    switch (tag)
-    {
-        case TAG_TASK_IDLE:     HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET); break;
-        case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET); break;
-        case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET); break;
-        case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK4_Pin, GPIO_PIN_SET); break;
-        case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
-        default: break;
-    }
+	switch (tag) {
+	case TAG_TASK_IDLE:
+		FU_time_delta = HAL_GetTick();
+		HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET);
+		break;
+	case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK4_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
+	default: break;
+	}
 }
 
 void callback_out(int tag){
-	switch (tag){
-
-	case TAG_TASK_IDLE:        HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);break;
+	switch (tag) {
+	case TAG_TASK_IDLE:
+		FU_acc += HAL_GetTick() - FU_time_delta;
+		HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);
+		break;
 	case TAG_TASK_INPUTS:      HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_RESET);break;
 	case TAG_TASK_UI:          HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_RESET);break;
 	case TAG_TASK_MONITOR:     HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK4_Pin, GPIO_PIN_RESET);break;
@@ -469,9 +475,6 @@ void oledEntry(void *argument)
   for(;;)
   {
 
-    /* Guardo tiempo de inicio para monitor */
-	tiempo_inicio = HAL_GetTick();
-
 	/* Leo todas las colas */
 	/*uiQueue, cola de eventos, actualiza estado del sistema*/
 	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
@@ -490,11 +493,7 @@ void oledEntry(void *argument)
 		ui_update_oled(&ui1, &data_monitor_buffer);
 	}
 
-    /* Guardo delta de tiempo para monitor */
-	/* TODO: ponerle mutex a esto */
-	data_monitor.tasks_data.tasks[uiTaskID].delta = HAL_GetTick() - tiempo_inicio;
-
-    osDelay(30);
+    osDelay(30); // a mimir
     /* Buffer para monitorQueue*/
 
 
@@ -586,8 +585,10 @@ void monitorEntry(void *argument)
 
   /* Buffers para cargar datos de monitoreo */
   MonitorData_t data_monitor_buffer;
-  size_t heap_free = xPortGetFreeHeapSize();
-  size_t heap_min = xPortGetMinimumEverFreeHeapSize();
+  uint32_t heap_free = xPortGetFreeHeapSize();
+  uint32_t heap_min = xPortGetMinimumEverFreeHeapSize();
+
+  uint32_t FU_average_timer = 0;
 
   /* Infinite loop */
   for(;;)
@@ -609,8 +610,22 @@ void monitorEntry(void *argument)
 	 uint32_t free_stack = osThreadGetStackSpace(uiTaskHandle);
 	 data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free = free_stack;
 
+	 free_stack = osThreadGetStackSpace(defaultTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[defaultTaskHandle].task_stack_free = free_stack;
+
+	 free_stack = osThreadGetStackSpace(inputsTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[inputsTaskHandle].task_stack_free = free_stack;
+
+	 free_stack = osThreadGetStackSpace(monitorTaskHandle);
+	 data_monitor_buffer.tasks_data.tasks[monitorTaskHandle].task_stack_free = free_stack;
+
 	 /* Envio el paquete a ui a traves de monitorQueue */
      osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
+
+#define PERIODO_FU_MS (1000)
+     if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
+    	 uint32_t FU = (fu_acc) / PERIODO_FU_MS;
+     }
 
      osDelay(100); // a mimir
   }
