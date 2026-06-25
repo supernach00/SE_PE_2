@@ -27,7 +27,7 @@ typedef struct {
 typedef struct {
     uint32_t sys_heap_free;
     uint32_t sys_heap_min;
-    uint32_t fu;
+    uint8_t fu;
 } SystemData_t;
 
 /*Este es el struct que se envia por monitorQueue */

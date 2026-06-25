@@ -9,6 +9,10 @@ typedef enum {
 		ESTADO_INICIO,
 		ESTADO_CONFIG,
 		ESTADO_DIAG,
+		ESTADO_DIAG_TAREAS_UI,
+		ESTADO_DIAG_TAREAS_MONITOR,
+		ESTADO_DIAG_TAREAS_INPUTS,
+		ESTADO_DIAG_TAREAS_IDLE,
 		ESTADO_MEDIDA
 
 }Estado_e;
@@ -42,7 +46,8 @@ typedef struct {
 void ui_FSM_switch(UI_t *ui, Evento_e evento);
 void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor);
 void ui_update_data(char *data_buffer, MonitorData_t *data_monitor);
-void ui_init(UI_t *ui, MonitorData_t *data_monitor);
+//void ui_init(UI_t *ui, MonitorData_t *data_monitor);
+void ui_init(UI_t *ui);
 
 static inline void ui_up(UI_t *ui, int MAX)
 {

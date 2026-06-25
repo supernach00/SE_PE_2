@@ -59,14 +59,14 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BOTON_ENCODER_Pin GPIO_PIN_3
 #define BOTON_ENCODER_GPIO_Port GPIOA
-#define HOOK1_Pin GPIO_PIN_6
-#define HOOK1_GPIO_Port GPIOA
-#define HOOK2_Pin GPIO_PIN_7
-#define HOOK2_GPIO_Port GPIOA
-#define HOOK3_Pin GPIO_PIN_0
-#define HOOK3_GPIO_Port GPIOB
-#define HOOK4_Pin GPIO_PIN_1
-#define HOOK4_GPIO_Port GPIOB
+#define HOOK_IDLE_Pin GPIO_PIN_6
+#define HOOK_IDLE_GPIO_Port GPIOA
+#define HOOK_MONITOR_Pin GPIO_PIN_7
+#define HOOK_MONITOR_GPIO_Port GPIOA
+#define HOOK_UI_Pin GPIO_PIN_0
+#define HOOK_UI_GPIO_Port GPIOB
+#define HOOK_INPUTS_Pin GPIO_PIN_1
+#define HOOK_INPUTS_GPIO_Port GPIOB
 #define HOOK5_Pin GPIO_PIN_10
 #define HOOK5_GPIO_Port GPIOB
 

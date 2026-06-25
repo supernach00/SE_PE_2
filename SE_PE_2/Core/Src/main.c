@@ -93,13 +93,14 @@ const osMessageQueueAttr_t monitorQueue_attributes = {
 volatile int16_t encoder = 0;
 volatile int16_t encoder_prev = 0;
 
-UI_t ui1 = {
+volatile uint32_t FU_acc = 0;
+volatile uint32_t FU_time_delta = 0;
+
+volatile UI_t ui1 = {
 	ESTADO_INICIO,
 	1,
 	1
 };
-
-MonitorData_t data_monitor = {0};
 
 /* USER CODE END PV */
 
@@ -364,10 +365,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, HOOK1_Pin|HOOK2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, HOOK_IDLE_Pin|HOOK_MONITOR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, HOOK3_Pin|HOOK4_Pin|HOOK5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BOTON_ENCODER_Pin */
   GPIO_InitStruct.Pin = BOTON_ENCODER_Pin;
@@ -375,15 +376,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BOTON_ENCODER_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HOOK1_Pin HOOK2_Pin */
-  GPIO_InitStruct.Pin = HOOK1_Pin|HOOK2_Pin;
+  /*Configure GPIO pins : HOOK_IDLE_Pin HOOK_MONITOR_Pin */
+  GPIO_InitStruct.Pin = HOOK_IDLE_Pin|HOOK_MONITOR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HOOK3_Pin HOOK4_Pin HOOK5_Pin */
-  GPIO_InitStruct.Pin = HOOK3_Pin|HOOK4_Pin|HOOK5_Pin;
+  /*Configure GPIO pins : HOOK_UI_Pin HOOK_INPUTS_Pin HOOK5_Pin */
+  GPIO_InitStruct.Pin = HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -397,19 +398,17 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* Funciones para el analizador logico */
-uint32_t FU_acc = 0;
-uint32_t FU_time_delta = 0;
 void callback_in(int tag)
 {
 	switch (tag) {
 	case TAG_TASK_IDLE:
 		FU_time_delta = HAL_GetTick();
-		HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(HOOK_IDLE_GPIO_Port, HOOK_IDLE_Pin, GPIO_PIN_SET);
 		break;
-	case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_SET); break;
-	case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_SET); break;
-	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK4_Pin, GPIO_PIN_SET); break;
-	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK_INPUTS_GPIO_Port, HOOK_INPUTS_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_UI_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_SET); break;
+//	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
 	default: break;
 	}
 }
@@ -417,13 +416,14 @@ void callback_in(int tag)
 void callback_out(int tag){
 	switch (tag) {
 	case TAG_TASK_IDLE:
-		FU_acc += HAL_GetTick() - FU_time_delta;
-		HAL_GPIO_WritePin(HOOK1_GPIO_Port, HOOK1_Pin, GPIO_PIN_RESET);
+		uint32_t time_delta = HAL_GetTick() - FU_time_delta;
+		FU_acc += time_delta;
+		HAL_GPIO_WritePin(HOOK_IDLE_GPIO_Port, HOOK_IDLE_Pin, GPIO_PIN_RESET);
 		break;
-	case TAG_TASK_INPUTS:      HAL_GPIO_WritePin(HOOK2_GPIO_Port, HOOK2_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_UI:          HAL_GPIO_WritePin(HOOK3_GPIO_Port, HOOK3_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_MONITOR:     HAL_GPIO_WritePin(HOOK4_GPIO_Port, HOOK4_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_MUESTREO:    HAL_GPIO_WritePin(HOOK5_GPIO_Port, HOOK5_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_INPUTS:      HAL_GPIO_WritePin(HOOK_INPUTS_GPIO_Port, HOOK_INPUTS_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_UI:          HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_UI_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_MONITOR:     HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_RESET);break;
+//	case TAG_TASK_MUESTREO:    HAL_GPIO_WritePin(HOOK5_GPIO_Port, HOOK5_Pin, GPIO_PIN_RESET);break;
 	default: break;
 	}
 }
@@ -442,7 +442,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  osDelay(1);
   }
   /* USER CODE END 5 */
 }
@@ -460,16 +460,14 @@ void oledEntry(void *argument)
 
   /* Seteo el tag para el analizador logico */
     vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_UI);
-	ui_init(&ui1, &data_monitor);
+//	ui_init(&ui1, &data_monitor);
+	ui_init(&ui1);
 
   /* Buffer para uiQueue */
   Evento_e evt;
 
   /* Buffer para monitorQueue */
   MonitorData_t data_monitor_buffer;
-
-  /* Cosas para monitor*/
-  uint32_t tiempo_inicio;
 
   /* Infinite loop */
   for(;;)
@@ -495,7 +493,6 @@ void oledEntry(void *argument)
 
     osDelay(30); // a mimir
     /* Buffer para monitorQueue*/
-
 
   }
 
@@ -590,6 +587,8 @@ void monitorEntry(void *argument)
 
   uint32_t FU_average_timer = 0;
 
+  uint8_t should_update_ui = 0;
+
   /* Infinite loop */
   for(;;)
   {
@@ -608,24 +607,42 @@ void monitorEntry(void *argument)
 
 	 /* Recopilacion de datos de tareas*/
 	 uint32_t free_stack = osThreadGetStackSpace(uiTaskHandle);
+	 if (free_stack != data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free) should_update_ui = 1;
 	 data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free = free_stack;
 
+	// Estamos usando la defaultTask como la task de idle
 	 free_stack = osThreadGetStackSpace(defaultTaskHandle);
-	 data_monitor_buffer.tasks_data.tasks[defaultTaskHandle].task_stack_free = free_stack;
+	 if (free_stack != data_monitor_buffer.tasks_data.tasks[idleTaskID].task_stack_free) should_update_ui = 1;
+	 data_monitor_buffer.tasks_data.tasks[idleTaskID].task_stack_free = free_stack;
 
 	 free_stack = osThreadGetStackSpace(inputsTaskHandle);
-	 data_monitor_buffer.tasks_data.tasks[inputsTaskHandle].task_stack_free = free_stack;
+	 if (free_stack != data_monitor_buffer.tasks_data.tasks[inputsTaskID].task_stack_free) should_update_ui = 1;
+	 data_monitor_buffer.tasks_data.tasks[inputsTaskID].task_stack_free = free_stack;
 
 	 free_stack = osThreadGetStackSpace(monitorTaskHandle);
-	 data_monitor_buffer.tasks_data.tasks[monitorTaskHandle].task_stack_free = free_stack;
+	 if (data_monitor_buffer.tasks_data.tasks[monitorTaskID].task_stack_free) should_update_ui = 1;
+	 data_monitor_buffer.tasks_data.tasks[monitorTaskID].task_stack_free = free_stack;
+
+	 // TODO: esto va si se quiere actualizar en tiempo real el UI, pero se ve feo
+//		 if (	should_update_ui &&
+//				 (ui1.ui_estado == ESTADO_DIAG ||
+//				 ui1.ui_estado == ESTADO_DIAG_TAREAS_UI ||
+//				 ui1.ui_estado == ESTADO_DIAG_TAREAS_MONITOR ||
+//				 ui1.ui_estado == ESTADO_DIAG_TAREAS_INPUTS ||
+//				 ui1.ui_estado == ESTADO_DIAG_TAREAS_IDLE) )
+//			 ui1.ui_update = 1;
+
+#define PERIODO_FU_MS (1000)
+	 if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
+		 // se calcula el FU con un periodod de PERIODO_FU_MS en porcentaje
+		 uint32_t fu = ( (PERIODO_FU_MS - FU_acc) * 100 ) / PERIODO_FU_MS;
+		 data_monitor_buffer.system_data.fu = 100 - fu;
+		 FU_acc = 0;
+	 }
 
 	 /* Envio el paquete a ui a traves de monitorQueue */
      osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
 
-#define PERIODO_FU_MS (1000)
-     if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
-    	 uint32_t FU = (fu_acc) / PERIODO_FU_MS;
-     }
 
      osDelay(100); // a mimir
   }
