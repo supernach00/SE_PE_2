@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BOTON_ENCODER_Pin GPIO_PIN_3
 #define BOTON_ENCODER_GPIO_Port GPIOA
+#define DEBUG_PIN_Pin GPIO_PIN_5
+#define DEBUG_PIN_GPIO_Port GPIOA
 #define HOOK_IDLE_Pin GPIO_PIN_6
 #define HOOK_IDLE_GPIO_Port GPIOA
 #define HOOK_MONITOR_Pin GPIO_PIN_7

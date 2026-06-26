@@ -20,7 +20,7 @@ void ui_init(UI_t *ui){
 
 void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 
-		char val[8];
+		char val[15];
 
 		SSD1306_Clear();
 
@@ -45,7 +45,7 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 			SSD1306_DrawBitmap(0, 0, diag_sistema_bmp, 128, 64, 1);
 
 			SSD1306_GotoXY(50, 22);
-			snprintf(val, sizeof(val), "%d", (uint8_t) data_monitor->system_data.sys_heap_free);
+			snprintf(val, sizeof(val), "%ld/%ld", data_monitor->system_data.sys_heap_min, data_monitor->system_data.sys_heap_free);
 			SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 
 			SSD1306_GotoXY(50, 32);

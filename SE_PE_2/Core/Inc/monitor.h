@@ -17,7 +17,6 @@ typedef enum {
 typedef struct {
     uint32_t task_stack_free;
     uint32_t task_stack_min;
-    uint32_t delta;
 }Task_t;
 
 typedef struct {

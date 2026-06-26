@@ -56,28 +56,28 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for uiTask */
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for inputsTask */
 osThreadId_t inputsTaskHandle;
 const osThreadAttr_t inputsTask_attributes = {
   .name = "inputsTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal3,
 };
 /* Definitions for monitorTask */
 osThreadId_t monitorTaskHandle;
 const osThreadAttr_t monitorTask_attributes = {
   .name = "monitorTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for uiQueue */
 osMessageQueueId_t uiQueueHandle;
@@ -96,7 +96,7 @@ volatile int16_t encoder_prev = 0;
 volatile uint32_t FU_acc = 0;
 volatile uint32_t FU_time_delta = 0;
 
-volatile UI_t ui1 = {
+UI_t ui1 = {
 	ESTADO_INICIO,
 	1,
 	1
@@ -365,7 +365,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, HOOK_IDLE_Pin|HOOK_MONITOR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, DEBUG_PIN_Pin|HOOK_IDLE_Pin|HOOK_MONITOR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK5_Pin, GPIO_PIN_RESET);
@@ -376,8 +376,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BOTON_ENCODER_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HOOK_IDLE_Pin HOOK_MONITOR_Pin */
-  GPIO_InitStruct.Pin = HOOK_IDLE_Pin|HOOK_MONITOR_Pin;
+  /*Configure GPIO pins : DEBUG_PIN_Pin HOOK_IDLE_Pin HOOK_MONITOR_Pin */
+  GPIO_InitStruct.Pin = DEBUG_PIN_Pin|HOOK_IDLE_Pin|HOOK_MONITOR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -407,7 +407,7 @@ void callback_in(int tag)
 		break;
 	case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK_INPUTS_GPIO_Port, HOOK_INPUTS_Pin, GPIO_PIN_SET); break;
 	case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_UI_Pin, GPIO_PIN_SET); break;
-	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_SET); break;
 //	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
 	default: break;
 	}
@@ -469,6 +469,8 @@ void oledEntry(void *argument)
   /* Buffer para monitorQueue */
   MonitorData_t data_monitor_buffer;
 
+  TickType_t last_tick_type = xTaskGetTickCount();
+
   /* Infinite loop */
   for(;;)
   {
@@ -491,7 +493,8 @@ void oledEntry(void *argument)
 		ui_update_oled(&ui1, &data_monitor_buffer);
 	}
 
-    osDelay(30); // a mimir
+//    osDelay(30); // a mimir
+     vTaskDelayUntil(&last_tick_type, 100);
     /* Buffer para monitorQueue*/
 
   }
@@ -525,6 +528,8 @@ void encoderEntry(void *argument)
   /* Buffer para el uiQueue */
   Evento_e evt;
 
+  TickType_t last_tick_type = xTaskGetTickCount();
+
   /* Infinite loop */
   for(;;)
   {
@@ -554,8 +559,8 @@ void encoderEntry(void *argument)
 		}
 	}
 
-
-	osDelay(20);
+	vTaskDelayUntil(&last_tick_type, 20);
+//	osDelay(20);
 
   }
   /* USER CODE END encoderEntry */
@@ -577,7 +582,7 @@ void monitorEntry(void *argument)
   /* Cosas para advertir cuando se esta llenando mucho el heap.
    * La advertencia se pasa a uiTask mediante la cola de eventos (uiQueue)
    */
-  #define LIMITE_ADVERTENCIA 2
+  #define LIMITE_ADVERTENCIA 30
   Evento_e evt = EV_HEAP_ADVERTENCIA;
 
   /* Buffers para cargar datos de monitoreo */
@@ -585,18 +590,26 @@ void monitorEntry(void *argument)
   uint32_t heap_free = xPortGetFreeHeapSize();
   uint32_t heap_min = xPortGetMinimumEverFreeHeapSize();
 
-  uint32_t FU_average_timer = 0;
+  uint32_t FU_average_timer = HAL_GetTick();
 
-  uint8_t should_update_ui = 0;
+//  uint8_t should_update_ui = 0;
+
+  TickType_t last_tick_type = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
   {
 	 /* Recopilacion y carga de datos del sistema en data_monitor */
 
+//const osThreadAttr_t defaultTask_attributes = {
+//  .name = "defaultTask",
+//  .stack_size = 128 * 4,
+//  .priority = (osPriority_t) osPriorityNormal,
+//};
+
 	 /* Check de si estoy pasando los limites */
 	 heap_free = xPortGetFreeHeapSize();
-	 if (heap_free < LIMITE_ADVERTENCIA){
+	 if ( heap_free < LIMITE_ADVERTENCIA){
 			osMessageQueuePut(uiQueueHandle, &evt, 0, 0); /* Si estamos complicados de heap, envio evento de alerta al ui*/
 	 }
 
@@ -607,23 +620,23 @@ void monitorEntry(void *argument)
 
 	 /* Recopilacion de datos de tareas*/
 	 uint32_t free_stack = osThreadGetStackSpace(uiTaskHandle);
-	 if (free_stack != data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free) should_update_ui = 1;
+//	 if (free_stack != data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free) should_update_ui = 1;
 	 data_monitor_buffer.tasks_data.tasks[uiTaskID].task_stack_free = free_stack;
 
 	// Estamos usando la defaultTask como la task de idle
 	 free_stack = osThreadGetStackSpace(defaultTaskHandle);
-	 if (free_stack != data_monitor_buffer.tasks_data.tasks[idleTaskID].task_stack_free) should_update_ui = 1;
+//	 if (free_stack != data_monitor_buffer.tasks_data.tasks[idleTaskID].task_stack_free) should_update_ui = 1;
 	 data_monitor_buffer.tasks_data.tasks[idleTaskID].task_stack_free = free_stack;
 
 	 free_stack = osThreadGetStackSpace(inputsTaskHandle);
-	 if (free_stack != data_monitor_buffer.tasks_data.tasks[inputsTaskID].task_stack_free) should_update_ui = 1;
+//	 if (free_stack != data_monitor_buffer.tasks_data.tasks[inputsTaskID].task_stack_free) should_update_ui = 1;
 	 data_monitor_buffer.tasks_data.tasks[inputsTaskID].task_stack_free = free_stack;
 
 	 free_stack = osThreadGetStackSpace(monitorTaskHandle);
-	 if (data_monitor_buffer.tasks_data.tasks[monitorTaskID].task_stack_free) should_update_ui = 1;
+//	 if (data_monitor_buffer.tasks_data.tasks[monitorTaskID].task_stack_free) should_update_ui = 1;
 	 data_monitor_buffer.tasks_data.tasks[monitorTaskID].task_stack_free = free_stack;
 
-	 // TODO: esto va si se quiere actualizar en tiempo real el UI, pero se ve feo
+//	 // TODO: esto va si se quiere actualizar en tiempo real el UI, pero se ve feo
 //		 if (	should_update_ui &&
 //				 (ui1.ui_estado == ESTADO_DIAG ||
 //				 ui1.ui_estado == ESTADO_DIAG_TAREAS_UI ||
@@ -634,17 +647,23 @@ void monitorEntry(void *argument)
 
 #define PERIODO_FU_MS (1000)
 	 if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
+		 FU_average_timer = HAL_GetTick();
+		 HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
+
 		 // se calcula el FU con un periodod de PERIODO_FU_MS en porcentaje
-		 uint32_t fu = ( (PERIODO_FU_MS - FU_acc) * 100 ) / PERIODO_FU_MS;
+		 uint32_t fu = ( FU_acc * 100 ) / PERIODO_FU_MS;
 		 data_monitor_buffer.system_data.fu = 100 - fu;
 		 FU_acc = 0;
+		 if (ui1.ui_estado == ESTADO_DIAG )
+			 ui1.ui_update = 1;
 	 }
 
 	 /* Envio el paquete a ui a traves de monitorQueue */
      osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
 
 
-     osDelay(100); // a mimir
+     vTaskDelayUntil(&last_tick_type, 50);
+//     osDelay(100); // a mimir
   }
   /* USER CODE END monitorEntry */
 }
