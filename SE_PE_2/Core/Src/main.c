@@ -483,19 +483,20 @@ void oledEntry(void *argument)
 
 	}
 
-	/*monitorQueue, actualiza datos de diagnostico*/
+	/* Leo monitorQueue, actualiza datos de diagnostico*/
 	osMessageQueueGet(monitorQueueHandle, &data_monitor_buffer, NULL, 0);
 
 	/* Actualizo pantalla si es necesario*/
-	if (ui1.ui_update){
+	if (ui1.ui_update_sel || ui1.ui_update_background || ui1.ui_update_datos){
 
-		ui1.ui_update = 0;
 		ui_update_oled(&ui1, &data_monitor_buffer);
+		ui1.ui_update_sel = 0;
+		ui1.ui_update_background = 0;
+		ui1.ui_update_datos = 0;
 	}
 
-//    osDelay(30); // a mimir
+	/* A mimir */
      vTaskDelayUntil(&last_tick_type, 100);
-    /* Buffer para monitorQueue*/
 
   }
 
@@ -645,7 +646,7 @@ void monitorEntry(void *argument)
 //				 ui1.ui_estado == ESTADO_DIAG_TAREAS_IDLE) )
 //			 ui1.ui_update = 1;
 
-#define PERIODO_FU_MS (1000)
+#define PERIODO_FU_MS (1000) // TODO: revisar
 	 if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
 		 FU_average_timer = HAL_GetTick();
 		 HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
@@ -655,7 +656,7 @@ void monitorEntry(void *argument)
 		 data_monitor_buffer.system_data.fu = 100 - fu;
 		 FU_acc = 0;
 		 if (ui1.ui_estado == ESTADO_DIAG )
-			 ui1.ui_update = 1;
+			 ui1.ui_update_datos = 1;
 	 }
 
 	 /* Envio el paquete a ui a traves de monitorQueue */

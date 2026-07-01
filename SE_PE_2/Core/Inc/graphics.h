@@ -3,14 +3,17 @@
 
 #include <stdint.h>
 
+/* Assets generales */
+extern const unsigned char flecha_bmp[];
 extern const unsigned char pepe_bmp[];
 
 /*Menu inicio*/
-extern const unsigned char inicio_sel_medida_bmp[];
-extern const unsigned char inicio_sel_diagnostico_bmp[];
-extern const unsigned char inicio_sel_config_bmp[];
+extern const unsigned char inicio_background_bmp[];
 
 /*Menu diagnostico */
 extern const unsigned char diag_sistema_bmp[];
+
+/*Menu configuracion */
+extern const unsigned char config_background_bmp[];
 
 #endif

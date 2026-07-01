@@ -39,7 +39,9 @@ typedef struct {
 
 	Estado_e ui_estado;
 	Seleccion_t ui_seleccion;
-	uint8_t ui_update;
+	uint8_t ui_update_background;
+	uint8_t ui_update_sel;
+	uint8_t ui_update_datos;
 
 }UI_t;
 
