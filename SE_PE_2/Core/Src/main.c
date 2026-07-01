@@ -90,16 +90,15 @@ const osMessageQueueAttr_t monitorQueue_attributes = {
   .name = "monitorQueue"
 };
 /* USER CODE BEGIN PV */
-volatile int16_t encoder = 0;
-volatile int16_t encoder_prev = 0;
-
 volatile uint32_t FU_acc = 0;
 volatile uint32_t FU_time_delta = 0;
 
 UI_t ui1 = {
 	ESTADO_INICIO,
+	0,
 	1,
-	1
+	1,
+	0,
 };
 
 /* USER CODE END PV */
@@ -526,6 +525,10 @@ void encoderEntry(void *argument)
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
   __HAL_TIM_SET_COUNTER(&htim1, 0);
 
+  /* Buffers para el encoder */
+  volatile int16_t encoder = 0;
+  volatile int16_t encoder_prev = 0;
+
   /* Buffer para el uiQueue */
   Evento_e evt;
 
@@ -561,7 +564,6 @@ void encoderEntry(void *argument)
 	}
 
 	vTaskDelayUntil(&last_tick_type, 20);
-//	osDelay(20);
 
   }
   /* USER CODE END encoderEntry */

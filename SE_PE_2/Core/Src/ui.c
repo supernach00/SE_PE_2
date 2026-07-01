@@ -35,30 +35,28 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 				SSD1306_DrawBitmap(0, 0, inicio_background_bmp, 128, 64, 1);
 			}
 
-			switch(ui->ui_seleccion){
-			case SEL_MEDIDA:
-				if (ui->ui_update_sel) {
+			if (ui->ui_update_sel){
+
+				switch(ui->ui_seleccion){
+				case SEL_MEDIDA:
 					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
 					SSD1306_DrawBitmap(5, 8, flecha_bmp, 12, 11, 1); // Flecha
-				}
-				break;
+					break;
 
-			case SEL_DIAG:
-				if (ui->ui_update_sel) {
+				case SEL_DIAG:
 					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
 					SSD1306_DrawBitmap(5, 26, flecha_bmp, 12, 11, 1);
-				}
-				break;
+					break;
 
-			case SEL_CONFIG:
-				if (ui->ui_update_sel) {
+				case SEL_CONFIG:
 					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
 					SSD1306_DrawBitmap(5, 46, flecha_bmp, 12, 11, 1);
-				}
-				break;
+					break;
 
-			default:
-				break;
+				default:
+					break;
+				}
+
 			}
 		break;
 
@@ -162,13 +160,11 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 				switch(ui->ui_seleccion){
 				case 0:
 
-					if (ui->ui_update_sel) {
-						SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
-						SSD1306_DrawBitmap(5, 23, flecha_bmp, 12, 11, 1); // Flecha
-					}
+					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
+					SSD1306_DrawBitmap(5, 23, flecha_bmp, 12, 11, 1); // Flecha
 					break;
 
-				case SEL_DIAG:
+				case 1:
 					if (ui->ui_update_sel) {
 						SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
 						SSD1306_DrawBitmap(5, 41, flecha_bmp, 12, 11, 1);
@@ -213,14 +209,18 @@ void ui_FSM_switch(UI_t *ui, Evento_e evento){
 			case SEL_CONFIG:
 				ui->ui_estado = ESTADO_CONFIG;
 				ui->ui_update_background = 1;
+				ui->ui_update_sel = 1;
+				ui->ui_seleccion = 0;
 				break;
 			case SEL_MEDIDA:
 				ui->ui_estado = ESTADO_MEDIDA;
 				ui->ui_update_background = 1;
+				ui->ui_update_datos = 1;
 				break;
 			case SEL_DIAG:
 				ui->ui_estado = ESTADO_DIAG;
 				ui->ui_update_background = 1;
+				ui->ui_update_datos = 1;
 				break;
 			default:
 				break;
@@ -297,7 +297,7 @@ void ui_FSM_switch(UI_t *ui, Evento_e evento){
 	case ESTADO_CONFIG:
 		if (evento == EV_BOTON_ENCODER){
 			ui->ui_estado = ESTADO_INICIO;
-			ui->ui_seleccion = 1;
+			ui->ui_seleccion = 0;
 
 			ui->ui_update_background = 1;
 			ui->ui_update_sel = 1;
