@@ -114,9 +114,8 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 		case ESTADO_DIAG_TAREAS_INPUTS:
 			if (ui->ui_update_background){
 				SSD1306_Clear();
+				SSD1306_DrawBitmap(0, 0, diag_background_inputs_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(15, 5);
-				SSD1306_Puts("Tarea INPUTS", &Font_7x10, SSD1306_COLOR_WHITE);
 				SSD1306_GotoXY(15, 32);
 				snprintf(val, sizeof(val), "%ld", data_monitor->tasks_data.tasks[inputsTaskID].task_stack_free);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
@@ -146,7 +145,7 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 			}
 			break;
 
-		/* Estado configuracion */
+		/* Estados configuracion  ------------------- */
 
 		case ESTADO_CONFIG:
 
@@ -174,6 +173,72 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 				default: break;
 				}
 			}
+
+		break;
+
+		case ESTADO_CONFIG_MODO:
+
+			if (ui->ui_update_background){
+				SSD1306_Clear();
+				SSD1306_DrawBitmap(0, 0, config_background_modo_bmp, 128, 64, 1);
+
+			}
+
+			if (ui->ui_update_sel){
+				switch(ui->ui_seleccion){
+				case 0:
+
+					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
+					SSD1306_DrawBitmap(5, 23, flecha_bmp, 12, 11, 1); // Flecha
+					break;
+
+				case 1:
+					if (ui->ui_update_sel) {
+						SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
+						SSD1306_DrawBitmap(5, 41, flecha_bmp, 12, 11, 1);
+					}
+					break;
+
+				default: break;
+				}
+
+			}
+
+			break;
+
+		case ESTADO_CONFIG_PARAMETRO:
+
+			if (ui->ui_update_background){
+				SSD1306_Clear();
+				SSD1306_DrawBitmap(0, 0, config_background_parametro_bmp, 128, 64, 1);
+
+			}
+
+			if (ui->ui_update_sel){
+				switch(ui->ui_seleccion){
+				case 0:
+
+					SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
+					SSD1306_DrawBitmap(5, 23, flecha_bmp, 12, 11, 1); // Flecha
+					break;
+
+				case 1:
+					if (ui->ui_update_sel) {
+						SSD1306_DrawFilledRectangle(4, 8, 14, 51, 0); // Cuadrado negro para limpiar las flechas viejas
+						SSD1306_DrawBitmap(5, 41, flecha_bmp, 12, 11, 1);
+					}
+					break;
+
+				default: break;
+				}
+
+			}
+
+			break;
+
+		/*  ------------------------------------  */
+
+		default: break;
 		}
 
 		SSD1306_UpdateScreen(); // update screen
@@ -296,20 +361,56 @@ void ui_FSM_switch(UI_t *ui, Evento_e evento){
 
 	case ESTADO_CONFIG:
 		if (evento == EV_BOTON_ENCODER){
-			ui->ui_estado = ESTADO_INICIO;
-			ui->ui_seleccion = 0;
+			if (ui->ui_seleccion == 0) ui->ui_estado = ESTADO_CONFIG_PARAMETRO;
+			else if (ui->ui_seleccion == 1) ui->ui_estado = ESTADO_CONFIG_MODO;
 
+			ui->ui_seleccion = 0;
 			ui->ui_update_background = 1;
 			ui->ui_update_sel = 1;
-		}
-
-		if (evento == EV_UP) {
+		} else if (evento == EV_UP) {
 			ui_up(ui, 1);
+			ui->ui_update_sel = 1;
+			break;
+		}else if (evento == EV_DOWN) {
+			ui_down(ui);
+			ui->ui_update_sel = 1;
+			break;
+		}
+	break;
+
+	case ESTADO_CONFIG_MODO:
+		if (evento == EV_BOTON_ENCODER){
+
+			if (ui->ui_seleccion == 0) ui->ui_estado = ESTADO_INICIO;
+			else if (ui->ui_seleccion == 1) ui->ui_estado = ESTADO_INICIO;
+
+			ui->ui_seleccion = 0;
+			ui->ui_update_background = 1;
+			ui->ui_update_sel = 1;
+		} else if (evento == EV_UP) {
+			ui_up(ui, 1);
+			ui->ui_update_sel = 1;
+			break;
+		}else if (evento == EV_DOWN) {
+			ui_down(ui);
 			ui->ui_update_sel = 1;
 			break;
 		}
 
-		if (evento == EV_DOWN) {
+	case ESTADO_CONFIG_PARAMETRO:
+		if (evento == EV_BOTON_ENCODER){
+
+			if (ui->ui_seleccion == 0) ui->ui_estado = ESTADO_INICIO;
+			else if (ui->ui_seleccion == 1) ui->ui_estado = ESTADO_INICIO;
+
+			ui->ui_seleccion = 0;
+			ui->ui_update_background = 1;
+			ui->ui_update_sel = 1;
+		} else if (evento == EV_UP) {
+			ui_up(ui, 1);
+			ui->ui_update_sel = 1;
+			break;
+		}else if (evento == EV_DOWN) {
 			ui_down(ui);
 			ui->ui_update_sel = 1;
 			break;
