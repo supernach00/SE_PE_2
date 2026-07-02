@@ -68,8 +68,8 @@ typedef enum {
 
 typedef struct {
 
-	Modo_e config_modo;
-	Parametro_e config_parametro;
+	Modo_e modo;
+	Parametro_e parametro;
 
 }Config_t;
 

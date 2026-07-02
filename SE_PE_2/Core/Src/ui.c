@@ -92,7 +92,7 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				SSD1306_Clear();
 				SSD1306_DrawBitmap(0, 0, diag_background_ui_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(15, 32);
+				SSD1306_GotoXY(50, 22);
 				snprintf(val, sizeof(val), "%ld", data_monitor->tasks_data.tasks[uiTaskID].task_stack_free);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 			}
@@ -103,7 +103,8 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				SSD1306_Clear();
 				SSD1306_DrawBitmap(0, 0, diag_background_monitor_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(15, 32);
+				SSD1306_GotoXY(50, 22);
+
 				snprintf(val, sizeof(val), "%ld", data_monitor->tasks_data.tasks[monitorTaskID].task_stack_free);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 			}
@@ -114,7 +115,7 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				SSD1306_Clear();
 				SSD1306_DrawBitmap(0, 0, diag_background_inputs_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(15, 32);
+				SSD1306_GotoXY(50, 22);
 				snprintf(val, sizeof(val), "%ld", data_monitor->tasks_data.tasks[inputsTaskID].task_stack_free);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 			}
@@ -125,7 +126,7 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				SSD1306_Clear();
 				SSD1306_DrawBitmap(0, 0, diag_background_idle_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(15, 32);
+				SSD1306_GotoXY(50, 22);
 				snprintf(val, sizeof(val), "%ld", data_monitor->tasks_data.tasks[idleTaskID].task_stack_free);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 			}
@@ -140,17 +141,17 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 			if (ui->ui_update_background){
 				SSD1306_Clear();
 
-				switch(config->config_modo){
+				switch(config->modo){
 
 				case MODO_SINGLE:
-					if (config->config_parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_S_R_bmp, 128, 64, 1);
-					else if(config->config_parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_S_C_bmp, 128, 64, 1);
+					if (config->parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_S_R_bmp, 128, 64, 1);
+					else if(config->parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_S_C_bmp, 128, 64, 1);
 
 					break;
 
 				case MODO_MULTIPLE:
-					if (config->config_parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_M_R_bmp, 128, 64, 1);
-					else if(config->config_parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_M_C_bmp, 128, 64, 1);
+					if (config->parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_M_R_bmp, 128, 64, 1);
+					else if(config->parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_M_C_bmp, 128, 64, 1);
 
 					break;
 
@@ -401,11 +402,11 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 
 			if (ui->ui_seleccion == 0) {
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_modo = MODO_SINGLE;
+				config->modo = MODO_SINGLE;
 			}
 			else if (ui->ui_seleccion == 1){
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_modo = MODO_MULTIPLE;
+				config->modo = MODO_MULTIPLE;
 			}
 
 			ui->ui_seleccion = 0;
@@ -425,11 +426,11 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 		if (evento == EV_BOTON_ENCODER){
 			if (ui->ui_seleccion == 0) {
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_parametro = PARAMETRO_R;
+				config->parametro = PARAMETRO_R;
 			}
 			else if (ui->ui_seleccion == 1){
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_parametro = PARAMETRO_C;
+				config->parametro = PARAMETRO_C;
 			}
 
 			ui->ui_seleccion = 0;
