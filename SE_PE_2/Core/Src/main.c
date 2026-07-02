@@ -90,15 +90,23 @@ const osMessageQueueAttr_t monitorQueue_attributes = {
   .name = "monitorQueue"
 };
 /* USER CODE BEGIN PV */
+
+/* Globables para monitor */
 volatile uint32_t FU_acc = 0;
 volatile uint32_t FU_time_delta = 0;
 
+/* Globales para UI */
 UI_t ui1 = {
 	ESTADO_INICIO,
-	0,
-	1,
-	1,
-	0,
+	0, // Seleccion inicial
+	1, // Flag update background
+	1, // Flag update seleccion
+	0, // Flag update datos
+};
+
+Config_t config1 = { // Configuracion default
+	MODO_UNICO,
+	PARAMETRO_R,
 };
 
 /* USER CODE END PV */
@@ -478,7 +486,7 @@ void oledEntry(void *argument)
 	/*uiQueue, cola de eventos, actualiza estado del sistema*/
 	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
 
-			ui_FSM_switch(&ui1, evt);
+			ui_FSM_switch(&ui1, &config1, evt);
 
 	}
 
@@ -532,7 +540,7 @@ void encoderEntry(void *argument)
   /* Buffer para el uiQueue */
   Evento_e evt;
 
-  TickType_t last_tick_type = xTaskGetTickCount();
+  TickType_t last_tick = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
@@ -563,7 +571,7 @@ void encoderEntry(void *argument)
 		}
 	}
 
-	vTaskDelayUntil(&last_tick_type, 20);
+	vTaskDelayUntil(&last_tick, 20);
 
   }
   /* USER CODE END encoderEntry */
@@ -597,7 +605,7 @@ void monitorEntry(void *argument)
 
 //  uint8_t should_update_ui = 0;
 
-  TickType_t last_tick_type = xTaskGetTickCount();
+  TickType_t last_tick = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
@@ -665,7 +673,7 @@ void monitorEntry(void *argument)
      osMessageQueuePut(monitorQueueHandle, &data_monitor_buffer, 0, 0);
 
 
-     vTaskDelayUntil(&last_tick_type, 50);
+     vTaskDelayUntil(&last_tick, 50);
 //     osDelay(100); // a mimir
   }
   /* USER CODE END monitorEntry */

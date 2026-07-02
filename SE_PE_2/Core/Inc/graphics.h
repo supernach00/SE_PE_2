@@ -13,6 +13,9 @@ extern const unsigned char inicio_background_bmp[];
 /*Menu diagnostico */
 extern const unsigned char diag_sistema_bmp[];
 extern const unsigned char diag_background_inputs_bmp[];
+extern const unsigned char diag_background_monitor_bmp[];
+extern const unsigned char diag_background_idle_bmp[];
+extern const unsigned char diag_background_ui_bmp[];
 
 /*Menu configuracion */
 extern const unsigned char config_background_bmp[];

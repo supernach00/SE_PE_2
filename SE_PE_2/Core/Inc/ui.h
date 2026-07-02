@@ -4,31 +4,32 @@
 #include <stdint.h>
 #include "monitor.h"
 
+/* Estados y eventos */
 typedef enum {
 
-		ESTADO_INICIO,
+	ESTADO_INICIO,
 
-		ESTADO_DIAG,
-		ESTADO_DIAG_TAREAS_UI,
-		ESTADO_DIAG_TAREAS_MONITOR,
-		ESTADO_DIAG_TAREAS_INPUTS,
-		ESTADO_DIAG_TAREAS_IDLE,
+	ESTADO_DIAG,
+	ESTADO_DIAG_TAREAS_UI,
+	ESTADO_DIAG_TAREAS_MONITOR,
+	ESTADO_DIAG_TAREAS_INPUTS,
+	ESTADO_DIAG_TAREAS_IDLE,
 
-		ESTADO_MEDIDA,
+	ESTADO_MEDIDA,
 
-		ESTADO_CONFIG,
-		ESTADO_CONFIG_MODO,
-		ESTADO_CONFIG_PARAMETRO
+	ESTADO_CONFIG,
+	ESTADO_CONFIG_MODO,
+	ESTADO_CONFIG_PARAMETRO
 
 }Estado_e;
 
 typedef enum {
 
-		EV_UP,
-		EV_DOWN,
-		EV_BOTON,
-		EV_BOTON_ENCODER,
-		EV_HEAP_ADVERTENCIA
+	EV_UP,
+	EV_DOWN,
+	EV_BOTON,
+	EV_BOTON_ENCODER,
+	EV_HEAP_ADVERTENCIA
 
 }Evento_e;
 
@@ -50,12 +51,34 @@ typedef struct {
 
 }UI_t;
 
-void ui_FSM_switch(UI_t *ui, Evento_e evento);
+/* Configuracion */
+typedef enum {
+
+	MODO_UNICO,
+	MODO_CONTINUO,
+
+}Modo_e;
+
+typedef enum {
+
+	PARAMETRO_R,
+	PARAMETRO_C
+
+}Parametro_e;
+
+typedef struct {
+
+	Modo_e config_modo;
+	Parametro_e config_parametro;
+
+}Config_t;
+
+void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento);
 void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor);
 void ui_update_data(char *data_buffer, MonitorData_t *data_monitor);
-//void ui_init(UI_t *ui, MonitorData_t *data_monitor);
 void ui_init(UI_t *ui);
 
+/* Funciones inline */
 static inline void ui_up(UI_t *ui, int MAX)
 {
     if (ui->ui_seleccion < MAX) {
