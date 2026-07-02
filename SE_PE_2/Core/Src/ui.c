@@ -23,7 +23,7 @@ void ui_init(UI_t *ui){
 //
 //}
 
-void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
+void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 
 		char val[15];
 
@@ -134,11 +134,32 @@ void ui_update_oled(UI_t *ui, MonitorData_t *data_monitor){
 			}
 			break;
 
+	    /* Estados medida --------------------------- */
+
 		case ESTADO_MEDIDA:
 			if (ui->ui_update_background){
 				SSD1306_Clear();
 
-				SSD1306_DrawBitmap(0, 0, pepe_bmp, 128, 64, 1);
+				switch(config->config_modo){
+
+				case MODO_SINGLE:
+					if (config->config_parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_S_R_bmp, 128, 64, 1);
+					else if(config->config_parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_S_C_bmp, 128, 64, 1);
+
+					break;
+
+				case MODO_MULTIPLE:
+					if (config->config_parametro == PARAMETRO_R) SSD1306_DrawBitmap(0, 0, medida_background_M_R_bmp, 128, 64, 1);
+					else if(config->config_parametro == PARAMETRO_C) SSD1306_DrawBitmap(0, 0, medida_background_M_C_bmp, 128, 64, 1);
+
+					break;
+
+				}
+			}
+
+			if (ui->ui_update_datos){
+				// TODO: aca actuaLizar datos
+
 			}
 			break;
 
@@ -380,11 +401,11 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 
 			if (ui->ui_seleccion == 0) {
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_modo = MODO_UNICO;
+				config->config_modo = MODO_SINGLE;
 			}
 			else if (ui->ui_seleccion == 1){
 				ui->ui_estado = ESTADO_INICIO;
-				config->config_modo = MODO_CONTINUO;
+				config->config_modo = MODO_MULTIPLE;
 			}
 
 			ui->ui_seleccion = 0;

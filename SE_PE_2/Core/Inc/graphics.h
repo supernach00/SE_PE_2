@@ -22,4 +22,10 @@ extern const unsigned char config_background_bmp[];
 extern const unsigned char config_background_modo_bmp[];
 extern const unsigned char config_background_parametro_bmp[];
 
+/*Menu medida */
+extern const unsigned char medida_background_S_C_bmp[];
+extern const unsigned char medida_background_M_C_bmp[];
+extern const unsigned char medida_background_S_R_bmp[];
+extern const unsigned char medida_background_M_R_bmp[];
+
 #endif

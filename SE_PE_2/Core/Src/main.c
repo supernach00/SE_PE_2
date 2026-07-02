@@ -105,7 +105,7 @@ UI_t ui1 = {
 };
 
 Config_t config1 = { // Configuracion default
-	MODO_UNICO,
+	MODO_SINGLE,
 	PARAMETRO_R,
 };
 
@@ -496,7 +496,7 @@ void oledEntry(void *argument)
 	/* Actualizo pantalla si es necesario*/
 	if (ui1.ui_update_sel || ui1.ui_update_background || ui1.ui_update_datos){
 
-		ui_update_oled(&ui1, &data_monitor_buffer);
+		ui_update_oled(&ui1, &config1, &data_monitor_buffer);
 		ui1.ui_update_sel = 0;
 		ui1.ui_update_background = 0;
 		ui1.ui_update_datos = 0;
