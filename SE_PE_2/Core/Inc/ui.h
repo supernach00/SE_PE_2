@@ -29,7 +29,8 @@ typedef enum {
 	EV_DOWN,
 	EV_BOTON,
 	EV_BOTON_ENCODER,
-	EV_HEAP_ADVERTENCIA
+	EV_HEAP_ADVERTENCIA,
+	EV_NEW_SAMPLE,
 
 }Evento_e;
 
@@ -74,7 +75,7 @@ typedef struct {
 }Config_t;
 
 void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento);
-void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor);
+void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uint16_t sample);
 void ui_update_data(char *data_buffer, MonitorData_t *data_monitor);
 void ui_init(UI_t *ui);
 

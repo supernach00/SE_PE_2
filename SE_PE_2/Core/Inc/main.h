@@ -71,6 +71,12 @@ void Error_Handler(void);
 #define HOOK_INPUTS_GPIO_Port GPIOB
 #define HOOK5_Pin GPIO_PIN_10
 #define HOOK5_GPIO_Port GPIOB
+#define GPIO330R_Pin GPIO_PIN_13
+#define GPIO330R_GPIO_Port GPIOB
+#define GPIO10K_Pin GPIO_PIN_14
+#define GPIO10K_GPIO_Port GPIOB
+#define GPIO1M_Pin GPIO_PIN_15
+#define GPIO1M_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

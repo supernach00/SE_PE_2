@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include "fonts.h"
 
+//extern Unidad_t unit;
+uint8_t sample_index = 0;
+
 //void ui_init(UI_t *ui, MonitorData_t *data_monitor){
 void ui_init(UI_t *ui){
 
@@ -23,7 +26,7 @@ void ui_init(UI_t *ui){
 //
 //}
 
-void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
+void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uint16_t sample){
 
 		char val[15];
 
@@ -138,9 +141,31 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 	    /* Estados medida --------------------------- */
 
 		case ESTADO_MEDIDA:
+			if (ui->ui_update_datos){
+				// TODO: aca actuaLizar datos
+				uint16_t converted_sample;
+				if (config->parametro == PARAMETRO_R) {
+					// TODO: habría que hacer algo así no?
+//					uint32_t fondo_escala;
+//					if (unit == OHMS) {
+//						fondo_escala = 10000;
+//					}
+					converted_sample = SSD1306_HEIGHT  - sample * SSD1306_HEIGHT / 10000 + 20;
+				} else if (config->parametro == PARAMETRO_C) {
+					converted_sample = 0;
+				}
+				SSD1306_DrawPixel(sample_index++, converted_sample, SSD1306_COLOR_WHITE);
+				if (sample_index > SSD1306_WIDTH) {
+					sample_index = 0;
+					ui->ui_update_background = 1;
+				}
+			}
+
 			if (ui->ui_update_background){
 				SSD1306_Clear();
 
+				// QUÉ ES MODO SINGLE Y MULTIPLE??
+				// NO ES COMO EL TP1, no hay single y continuo
 				switch(config->modo){
 
 				case MODO_SINGLE:
@@ -158,10 +183,6 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				}
 			}
 
-			if (ui->ui_update_datos){
-				// TODO: aca actuaLizar datos
-
-			}
 			break;
 
 		/* Estados configuracion  ------------------- */
@@ -261,6 +282,7 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 		}
 
 		SSD1306_UpdateScreen(); // update screen
+		// gracias por el comentario máquina, no se que haría sin ese comentario tan útil
 
 	}
 
@@ -451,13 +473,13 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 		if (evento == EV_BOTON_ENCODER){
 			ui->ui_estado = ESTADO_INICIO;
 			ui->ui_update_background = 1;
+		} else if (evento == EV_NEW_SAMPLE) {
+			ui->ui_update_datos = 1;
 		}
 	break;
 
 	default:
 		break;
 	}
-
-
 
 }
