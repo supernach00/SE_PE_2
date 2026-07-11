@@ -28,6 +28,7 @@
 #include "ui.h"
 #include "monitor.h"
 #include "ssd1306.h"
+
 #include "medida.h"
 
 /* USER CODE END Includes */
@@ -36,13 +37,21 @@
 typedef StaticQueue_t osStaticMessageQDef_t;
 /* USER CODE BEGIN PTD */
 
+typedef enum {
+	FALSE = 0,
+	TRUE = 1
+} Bool;
+
+typedef struct {
+	uint16_t raw; // la muestra cruda tal cual sale del ADC
+	uint16_t processed; // la muestra procesada al valor de Resistencia o Capacidad
+} MuestreoQueue_t;
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_AVG_SAMPLES_AMOUNT (32)
-#define ADC_BUFFER_SIZE (2*ADC_AVG_SAMPLES_AMOUNT)
+#define ADC_BUFFER_SIZE (256)
 
 /* USER CODE END PD */
 
@@ -53,10 +62,12 @@ typedef StaticQueue_t osStaticMessageQDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -110,7 +121,7 @@ const osMessageQueueAttr_t monitorQueue_attributes = {
 };
 /* Definitions for muestreoQueue */
 osMessageQueueId_t muestreoQueueHandle;
-uint8_t samplesQueueBuffer[ 1 * sizeof( uint16_t ) ];
+uint8_t samplesQueueBuffer[ 4 * sizeof( MuestreoQueue_t ) ];
 osStaticMessageQDef_t samplesQueueControlBlock;
 const osMessageQueueAttr_t muestreoQueue_attributes = {
   .name = "muestreoQueue",
@@ -144,9 +155,11 @@ Config_t config1 = { // Configuracion default
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 void oledEntry(void *argument);
 void encoderEntry(void *argument);
@@ -162,15 +175,13 @@ void callback_out(int tag);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-uint16_t adc_buffer[ADC_BUFFER_SIZE] = {0}; // TODO: DEBERIA SER GLOBAL?
-uint8_t should_read_adc_buff_first_half = 0; // si es 0 debería leer la segunda mitad, sino la primera
-volatile uint16_t ADC_sample = 0;
+uint16_t adc_buffer[ADC_BUFFER_SIZE] = {0};
+volatile Bool buffer_ready = FALSE;
 
 // Con estas variables se controla el auto rango de las muestras
 // si shouldSetUpGPIOs es 1, entonces la FSM de medida configura
 // los GPIOs para el modo actual, la idea es que se reinicie cada
 // vez que se hace un swipe en la pantalla o se toca tomar una muestra
-volatile uint8_t shouldSetUpGPIOs = 1;
 Unidad_t unit; // contiene la unidad de la medida actual
 
 /* USER CODE END 0 */
@@ -204,12 +215,18 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_TIM1_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-//  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
+  HAL_ADC_Start_DMA(&hadc1,
+		  (uint32_t *)adc_buffer,
+		  ADC_BUFFER_SIZE);
+
+  HAL_TIM_Base_Start(&htim3);
 
   /* USER CODE END 2 */
 
@@ -236,7 +253,7 @@ int main(void)
   monitorQueueHandle = osMessageQueueNew (1, 56, &monitorQueue_attributes);
 
   /* creation of muestreoQueue */
-  muestreoQueueHandle = osMessageQueueNew (1, sizeof(uint16_t), &muestreoQueue_attributes);
+  muestreoQueueHandle = osMessageQueueNew (4, sizeof(MuestreoQueue_t), &muestreoQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -347,9 +364,9 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -457,6 +474,67 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 72-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 1000-1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -509,6 +587,11 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    buffer_ready = TRUE;
+}
+
 /* Funciones para el analizador logico */
 void callback_in(int tag)
 {
@@ -556,14 +639,7 @@ void StartDefaultTask(void *argument)
 
   TickType_t last_tick_type = xTaskGetTickCount();
 
-  // TODO: temporal
-#define AVG_SAMPLES (32)
-//  uint16_t samples_buffer[AVG_SAMPLES];
-//  uint8_t index = 0;
-
-  FSM_State state = FSM_R330;
-
-  uint16_t sample = 0;
+  uint16_t buffer_index = 0;
 
   /* Infinite loop */
   for(;;)
@@ -572,50 +648,84 @@ void StartDefaultTask(void *argument)
 	  if (ui1.ui_estado != ESTADO_MEDIDA) {
 		  vTaskDelayUntil(&last_tick_type, 1000);
 	  } else {
-		  if (shouldSetUpGPIOs) {
-			  // TODO: debería reiniciar el modo capacidad también??
-			  if (state == FSM_MOSTRAR_R) {
-				  state = FSM_R330;
+
+		  // Se lee el buffer
+		  if (buffer_ready) {
+			  buffer_ready = FALSE;
+
+			  uint32_t acc = 0;
+			  uint16_t raw_avg = 0;
+			  for (buffer_index = 0; buffer_index < ADC_BUFFER_SIZE; buffer_index++)
+				  acc += adc_buffer[buffer_index];
+
+
+			  // se guarda la media de las muestras
+			  raw_avg = acc / ADC_BUFFER_SIZE;
+
+			  buffer_index = 0;
+
+
+			  // Acá se tienen que procesar las muestras
+			  MuestreoQueue_t muestreoQueueSample;
+
+			  if (config1.parametro == PARAMETRO_C) {
+
+			  } else if (config1.parametro == PARAMETRO_R) {
+
+				  // TODO: configurar TIM3 para que sea 100us o menos, cuando
+				  // se mide resistencia, y lo mismo para 1ms cuando se mide C
+
+				  if (adc_buffer[buffer_index] <= VCC_AL_95_PORCIENTO) {
+					  muestreoQueueSample.processed = (VALOR_RESISTOR_330_OHMS * raw_avg) / (VCC_MV - raw_avg);
+					  muestreoQueueSample.raw = raw_avg;
+					  //							*unit = OHMS;
+					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+					  HAL_ADC_Start_DMA(&hadc1,
+							  (uint32_t *)adc_buffer,
+							  ADC_BUFFER_SIZE);
+					  continue;
+				  }
+
+				  set_resistencia(RESISTOR_10K);
+
+				  buffer_index++;
+				  if (adc_buffer[buffer_index] <= VCC_AL_95_PORCIENTO) {
+					  muestreoQueueSample.processed = (VALOR_RESISTOR_10K_OHMS * raw_avg) / (VCC_MV - raw_avg);
+					  muestreoQueueSample.raw = raw_avg;
+					  //							*unit = OHMS;
+					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+					  HAL_ADC_Start_DMA(&hadc1,
+							  (uint32_t *)adc_buffer,
+							  ADC_BUFFER_SIZE);
+					  continue;
+				  }
+
+				  set_resistencia(RESISTOR_1M);
+
+				  buffer_index++;
+				  if (adc_buffer[buffer_index] < VCC_AL_95_PORCIENTO) {
+					  muestreoQueueSample.processed = ( (VALOR_RESISTOR_1M_OHMS * raw_avg) / (VCC_MV - raw_avg) ) / 1000;
+					  muestreoQueueSample.raw = raw_avg;
+					  //							*unit = KILO_OHMS;
+					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+				  } else {
+					  // ESTO sería si todo falla
+					  muestreoQueueSample.processed = FALLO_R_FUERA_DE_ESCALA;
+					  muestreoQueueSample.raw = raw_avg;
+					  //							*unit = MEGA_OHMS;
+					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+				  }
+
+				  HAL_ADC_Start_DMA(&hadc1,
+						  (uint32_t *)adc_buffer,
+						  ADC_BUFFER_SIZE);
+
 			  }
+
 		  }
 
-		  state = FSM_General(state, &unit, config1.modo, &sample);
-
-		  if (state == FSM_MOSTRAR_C || state == FSM_MOSTRAR_R) {
-			  osMessageQueuePut(muestreoQueueHandle, &sample, 0, 0);
-		  }
-
-		  // Acá se configuran los GPIOs acorde al modo
-//		  if (shouldSetUpGPIOs) {
-//			  state = FSM_General(state, &unit, config1.modo, &sample);
-//		  }
-
-		  // acá se procesan las muestras y se envían a la cola
-		  // solo si se tiene el buffer lleno y se configuró el auto rango
-//		  if (index == AVG_SAMPLES-1 && shouldSetUpGPIOs == 0) {
-//			  // buffer lleno, se procesan las muestras
-//			  uint32_t acc = 0;
-//			  for (index = 0; index < AVG_SAMPLES; index++) {
-//				  acc += samples_buffer[index];
-//			  }
-//			  uint16_t converted_val = acc / AVG_SAMPLES;
-//			  index = 0;
-//
-//			  osMessageQueuePut(muestreoQueueHandle, &converted_val, 0, 0);
-//
-//
-//		  } else {
-//			  // TODO:
-//			  // esto es temporal hasta configurar DMA
-//			  HAL_ADC_Start(&hadc1);
-//			  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-//			  samples_buffer[index] = HAL_ADC_GetValue(&hadc1);
-//			  index++;
-//		  }
-
+		  vTaskDelayUntil(&last_tick_type, 5);
 	  }
-
-     vTaskDelayUntil(&last_tick_type, 2);
   }
   /* USER CODE END 5 */
 }
@@ -644,7 +754,10 @@ void oledEntry(void *argument)
 
   TickType_t last_tick_type = xTaskGetTickCount();
 
-  uint16_t latest_sample = 0;
+  MuestreoQueue_t queueBuffer = {0};
+
+  uint16_t latest_samples[4] = {0};
+  uint8_t samples_index = 0;
 
   /* Infinite loop */
   for(;;)
@@ -661,22 +774,16 @@ void oledEntry(void *argument)
 
 
 	/* Se adquiere la última muestra*/
-	while (osMessageQueueGet(muestreoQueueHandle, &latest_sample, NULL, 0) == osOK){
+	samples_index = 0;
+	while (osMessageQueueGet(muestreoQueueHandle, &queueBuffer, NULL, 0) == osOK){
 		ui_FSM_switch(&ui1, &config1, EV_NEW_SAMPLE);
-
-		// Se hace un nuevo autorango cada vez que la pantalla se refresca
-		if (	ui1.ui_estado == ESTADO_MEDIDA &&
-				ui1.ui_update_background &&
-				config1.modo == MODO_MULTIPLE)
-		{
-			shouldSetUpGPIOs = 1;
-		}
+		latest_samples[samples_index++] = queueBuffer.raw;
 	}
 
 
 	/* Actualizo pantalla si es necesario*/
 	if (ui1.ui_update_sel || ui1.ui_update_background || ui1.ui_update_datos){
-		ui_update_oled(&ui1, &config1, &data_monitor_buffer, latest_sample);
+		ui_update_oled(&ui1, &config1, &data_monitor_buffer, latest_samples);
 		ui1.ui_update_sel = 0;
 		ui1.ui_update_background = 0;
 		ui1.ui_update_datos = 0;

@@ -26,7 +26,7 @@ void ui_init(UI_t *ui){
 //
 //}
 
-void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uint16_t sample){
+void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uint16_t samples[4]){
 
 		char val[15];
 
@@ -150,11 +150,15 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uin
 //					if (unit == OHMS) {
 //						fondo_escala = 10000;
 //					}
-					converted_sample = SSD1306_HEIGHT  - sample * SSD1306_HEIGHT / 10000 + 20;
+					for (uint8_t i = 0; i < 4; i++) {
+						converted_sample = SSD1306_HEIGHT  - samples[i] * SSD1306_HEIGHT / 4095 + 15;
+						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
+					}
+					sample_index++;
+
 				} else if (config->parametro == PARAMETRO_C) {
 					converted_sample = 0;
 				}
-				SSD1306_DrawPixel(sample_index++, converted_sample, SSD1306_COLOR_WHITE);
 				if (sample_index > SSD1306_WIDTH) {
 					sample_index = 0;
 					ui->ui_update_background = 1;
