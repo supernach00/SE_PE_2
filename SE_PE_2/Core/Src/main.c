@@ -848,7 +848,7 @@ void StartDefaultTask(void *argument)
 			}
 
 #define VCC_AL_95_PORCIENTO (62259)
-#define VCC_AL_2_PORCIENTO (1310)
+#define VCC_AL_5_PORCIENTO (3276)
 
 			uint16_t adc_16bit = acc / 16; // Decimación a 16 bits
 			Bool range_changed = FALSE;
@@ -858,7 +858,7 @@ void StartDefaultTask(void *argument)
 				if (current_range == RANGE_330R) { current_range = RANGE_10K; range_changed = TRUE; }
 				else if (current_range == RANGE_10K) { current_range = RANGE_1M; range_changed = TRUE; }
 			}
-			else if (adc_16bit <= VCC_AL_2_PORCIENTO) {
+			else if (adc_16bit <= VCC_AL_5_PORCIENTO) {
 				if (current_range == RANGE_1M) { current_range = RANGE_10K; range_changed = TRUE; }
 				else if (current_range == RANGE_10K) { current_range = RANGE_330R; range_changed = TRUE; }
 			}
@@ -878,7 +878,7 @@ void StartDefaultTask(void *argument)
 			{
 				MuestreoQueue_t muestreoQueueSample;
 				muestreoQueueSample.raw = adc_16bit;
-#define VCC_16_BITS (65000)
+#define VCC_16_BITS (65490)
 
 				if (current_range == RANGE_330R) {
 					muestreoQueueSample.processed = (VALOR_RESISTOR_330_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit);
@@ -887,7 +887,19 @@ void StartDefaultTask(void *argument)
 					muestreoQueueSample.processed = (VALOR_RESISTOR_10K_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit);
 					muestreoQueueSample.unit = OHMS;
 				} else if (current_range == RANGE_1M) {
-					muestreoQueueSample.processed = ((VALOR_RESISTOR_1M_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit)) / 1000;
+//					muestreoQueueSample.processed = ((VALOR_RESISTOR_1M_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit)) / 1000;
+//					muestreoQueueSample.unit = KILO_OHMS;
+
+					// Tuve que hacer esto porque creo que estaba teniendo problemas con uint16_t
+					uint64_t numerador = (uint64_t)VALOR_RESISTOR_1M_OHMS * adc_16bit;
+					uint32_t denominador = VCC_16_BITS - adc_16bit;
+
+					if (denominador > 0) {
+						// Realizamos la división en 64 bits y luego dividimos por 1000 para pasar de Ohms a KiloOhms
+						muestreoQueueSample.processed = (uint32_t)((numerador / denominador) / 1000);
+					} else {
+						muestreoQueueSample.processed = 999; // Fallback por si hay división por cero (ADC saturado)
+					}
 					muestreoQueueSample.unit = KILO_OHMS;
 				}
 

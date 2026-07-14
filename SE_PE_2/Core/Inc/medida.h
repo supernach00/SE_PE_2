@@ -40,7 +40,7 @@ typedef enum {
 #define VALOR_RESISTOR_330_OHMS (330)
 #define VALOR_RESISTOR_10K_OHMS (10080)
 #define VALOR_RESISTOR_1M_KOHMS (999) // TODO: como manejamos esta proporcion?
-#define VALOR_RESISTOR_1M_OHMS (VALOR_RESISTOR_1M_KOHMS * 1000) // TODO: como manejamos esta proporcion?
+#define VALOR_RESISTOR_1M_OHMS (1000000) // TODO: como manejamos esta proporcion?
 
 //#define VCC_AL_95_PORCIENTO (0.95*VCC_MV)
 #define VCC_AL_63_PORCIENTO (0.63*VCC_MV)

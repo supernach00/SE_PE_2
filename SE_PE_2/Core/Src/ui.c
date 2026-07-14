@@ -166,11 +166,11 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 //					auto_rango_enabled = 1;
 				}
 
-				SSD1306_GotoXY(90, 50);
-				snprintf(val, sizeof(val), "05%ld", data_monitor->muestreo_data->processed);
+				SSD1306_GotoXY(80, 52);
+				snprintf(val, sizeof(val), "%05ld", data_monitor->muestreo_data->processed);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 
-				SSD1306_GotoXY(108, 3);
+//				SSD1306_GotoXY(108, 3);
 				switch (data_monitor->muestreo_data->unit) {
 				case OHMS: SSD1306_Puts("~", &Font_7x10, SSD1306_COLOR_WHITE); break;
 				case KILO_OHMS: SSD1306_Puts("K~", &Font_7x10, SSD1306_COLOR_WHITE); break;
