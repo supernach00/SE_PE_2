@@ -20,19 +20,31 @@ typedef enum {
 } Unidad_t;
 
 typedef enum {
+	FALSE = 0,
+	TRUE = 1
+} Bool;
+
+typedef struct {
+	uint16_t raw; // la muestra cruda tal cual sale del ADC
+	uint16_t processed; // la muestra procesada al valor de Resistencia o Capacidad
+	Unidad_t unit; // contiene la unidad de la medida actual
+} MuestreoQueue_t;
+
+typedef enum {
 	RESISTOR_330,
 	RESISTOR_10K,
 	RESISTOR_1M,
 } OutputResistor_Type;
 
 #define VCC_MV (3270)
-#define VALOR_RESISTOR_330_OHMS (331)
-#define VALOR_RESISTOR_10K_OHMS (9920)
+#define VALOR_RESISTOR_330_OHMS (330)
+#define VALOR_RESISTOR_10K_OHMS (10080)
 #define VALOR_RESISTOR_1M_KOHMS (999) // TODO: como manejamos esta proporcion?
 #define VALOR_RESISTOR_1M_OHMS (VALOR_RESISTOR_1M_KOHMS * 1000) // TODO: como manejamos esta proporcion?
 
-#define VCC_AL_95_PORCIENTO (0.95*VCC_MV)
+//#define VCC_AL_95_PORCIENTO (0.95*VCC_MV)
 #define VCC_AL_63_PORCIENTO (0.63*VCC_MV)
+//#define VCC_AL_5_PORCIENTO (0.05*VCC_MV)
 #define VCC_AL_2_PORCIENTO (0.02*VCC_MV)
 
 #define MAX_CUENTAS_DESCARGA (10 * 1000 * 1000) // 10 segundos?

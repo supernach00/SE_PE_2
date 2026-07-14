@@ -2,6 +2,9 @@
 #define MONITOR_H
 
 #define CANTIDAD_TASKS 4
+
+#include "medida.h"
+
 /* Enums */
 typedef enum {
 
@@ -33,6 +36,7 @@ typedef struct {
 typedef struct {
     SystemData_t system_data;
     TasksData_t tasks_data;
+	MuestreoQueue_t muestreo_data[4];
 } MonitorData_t;
 
 typedef struct {

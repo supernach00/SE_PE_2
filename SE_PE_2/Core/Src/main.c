@@ -37,21 +37,35 @@
 typedef StaticQueue_t osStaticMessageQDef_t;
 /* USER CODE BEGIN PTD */
 
-typedef enum {
-	FALSE = 0,
-	TRUE = 1
-} Bool;
-
-typedef struct {
-	uint16_t raw; // la muestra cruda tal cual sale del ADC
-	uint16_t processed; // la muestra procesada al valor de Resistencia o Capacidad
-} MuestreoQueue_t;
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define ADC_BUFFER_SIZE (256)
+
+// -----------------------------------------------------
+// TODO: factorizar esto a donde corresponde
+// Valores de ARR para el TIM3 según la escala de tiempo requerida
+#define TIM3_ARR_RAPIDO   (100 - 1)    // Muestreo muy rápido (~100 microsegundos por muestra)
+#define TIM3_ARR_MEDIO    (1000 - 1)  // Muestreo medio (~1 milisegundo por muestra)
+#define TIM3_ARR_LENTO    (10000 - 1) // Muestreo lento (~10 milisegundos por muestra)
+
+typedef enum {
+    RANGE_330R = 0,
+    RANGE_10K,
+    RANGE_1M
+} RangeState_t;
+
+typedef enum {
+    TIME_BASE_RAPIDA = 0,
+    TIME_BASE_MEDIA,
+    TIME_BASE_LENTA
+} TimeBase_t;
+
+// Prototipos de funciones auxiliares
+void set_hardware_range(RangeState_t range);
+uint32_t calcular_capacidad_final(int16_t indice_tau, TimeBase_t base_tiempo, RangeState_t rango_R);
+// TODO -----------------------------------------------------
 
 /* USER CODE END PD */
 
@@ -137,7 +151,7 @@ volatile uint32_t FU_acc = 0;
 volatile uint32_t FU_time_delta = 0;
 
 /* Globales para UI */
-UI_t ui1 = {
+volatile UI_t ui1 = {
 	ESTADO_INICIO,
 	0, // Seleccion inicial
 	1, // Flag update background
@@ -170,6 +184,12 @@ void UI_FSM_Switch(UI_t *ui, Evento_e evento);
 void callback_in(int tag);
 void callback_out(int tag);
 
+/**
+ * Ajustan los GPIOs para el fondo de escala más adecuado
+ * de para medir resistencias
+ */
+//MuestreoQueue_t configureAutoRangeResistor();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -177,12 +197,6 @@ void callback_out(int tag);
 
 uint16_t adc_buffer[ADC_BUFFER_SIZE] = {0};
 volatile Bool buffer_ready = FALSE;
-
-// Con estas variables se controla el auto rango de las muestras
-// si shouldSetUpGPIOs es 1, entonces la FSM de medida configura
-// los GPIOs para el modo actual, la idea es que se reinicie cada
-// vez que se hace un swipe en la pantalla o se toca tomar una muestra
-Unidad_t unit; // contiene la unidad de la medida actual
 
 /* USER CODE END 0 */
 
@@ -222,10 +236,12 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_ADC_Start_DMA(&hadc1,
-		  (uint32_t *)adc_buffer,
-		  ADC_BUFFER_SIZE);
+//  HAL_ADC_Start_DMA(&hadc1,
+//		  (uint32_t *)adc_buffer,
+//		  ADC_BUFFER_SIZE);
 
+  // Se comienza el Timer 3 que da la base de tiempo
+  // para la conversión del ADC 1
   HAL_TIM_Base_Start(&htim3);
 
   /* USER CODE END 2 */
@@ -587,9 +603,131 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+ * @brief Configura los GPIOs para activar la resistencia de carga/descarga correcta.
+ */
+void set_hardware_range(RangeState_t range) {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    // Todos se configuran como Entrada (Alta impedancia / Flotante / Z) por defecto
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT; // También puedes usar GPIO_MODE_ANALOG para menor ruido
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+
+    switch (range){
+
+    case RANGE_330R:
+        // 1. Ponemos en Z las resistencias de 10K y 1M
+        GPIO_InitStruct.Pin = GPIO10K_Pin;
+        HAL_GPIO_Init(GPIO10K_GPIO_Port, &GPIO_InitStruct);
+
+        GPIO_InitStruct.Pin = GPIO1M_Pin;
+        HAL_GPIO_Init(GPIO1M_GPIO_Port, &GPIO_InitStruct);
+
+        // 2. Activamos la de 330R como salida en ALTO
+        GPIO_InitStruct.Pin = GPIO330R_Pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(GPIO330R_GPIO_Port, GPIO330R_Pin, GPIO_PIN_SET);
+        break;
+
+    case RANGE_10K:
+        // 1. Ponemos en Z las resistencias de 330R y 1M
+        GPIO_InitStruct.Pin = GPIO330R_Pin;
+        HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+
+        GPIO_InitStruct.Pin = GPIO1M_Pin;
+        HAL_GPIO_Init(GPIO1M_GPIO_Port, &GPIO_InitStruct);
+
+        // 2. Activamos la de 10K como salida en ALTO
+        GPIO_InitStruct.Pin = GPIO10K_Pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        HAL_GPIO_Init(GPIO10K_GPIO_Port, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(GPIO10K_GPIO_Port, GPIO10K_Pin, GPIO_PIN_SET);
+        break;
+
+    case RANGE_1M:
+        // 1. Ponemos en Z las resistencias de 330R y 10K
+        GPIO_InitStruct.Pin = GPIO330R_Pin;
+        HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+
+        GPIO_InitStruct.Pin = GPIO10K_Pin;
+        HAL_GPIO_Init(GPIO10K_GPIO_Port, &GPIO_InitStruct);
+
+        // 2. Activamos la de 1M como salida en ALTO
+        GPIO_InitStruct.Pin = GPIO1M_Pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        HAL_GPIO_Init(GPIO1M_GPIO_Port, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(GPIO1M_GPIO_Port, GPIO1M_Pin, GPIO_PIN_SET);
+        break;
+
+    default:
+        // Fallback preventivo: Apagamos todo a Z para proteger el hardware
+        GPIO_InitStruct.Pin = GPIO330R_Pin;
+        HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin = GPIO10K_Pin;
+        HAL_GPIO_Init(GPIO10K_GPIO_Port, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin = GPIO1M_Pin;
+        HAL_GPIO_Init(GPIO1M_GPIO_Port, &GPIO_InitStruct);
+        break;
+    }
+}
+
+/**
+ * @brief Calcula el valor final de la capacidad basado en el índice de Tau y el hardware.
+ * Formula: C = t / R.
+ * t = indice_tau * Periodo_Muestreo
+ */
+uint32_t calcular_capacidad_final(int16_t indice_tau, TimeBase_t base_tiempo, RangeState_t rango_R) {
+	// TODO: cambiar esto para no usar double, y hacer todo con enteros
+    double tiempo_por_muestra_seg = 0.0;
+    double resistencia_ohms = 0.0;
+
+    // 1. Determinar el tiempo de paso del TIM3 (Asumiendo Clock del timer a 72MHz y Prescaler = 72-1 -> 1 microsegundo por tick)
+    switch(base_tiempo) {
+        case TIME_BASE_RAPIDA: tiempo_por_muestra_seg = (double)TIM3_ARR_RAPIDO / 1000000.0; break;
+        case TIME_BASE_MEDIA:  tiempo_por_muestra_seg = (double)TIM3_ARR_MEDIO / 1000000.0; break;
+        case TIME_BASE_LENTA:  tiempo_por_muestra_seg = (double)TIM3_ARR_LENTO / 1000000.0; break;
+    }
+
+    // 2. Determinar la resistencia utilizada para la carga
+    switch(rango_R) {
+        case RANGE_330R: resistencia_ohms = 330.0; break;
+        case RANGE_10K:  resistencia_ohms = 10000.0; break;
+        case RANGE_1M:   resistencia_ohms = 1000000.0; break;
+    }
+
+    // Tiempo total hasta llegar a Tau (63.2%)
+    double t_tau = (double)indice_tau * tiempo_por_muestra_seg;
+
+    // C = Tau / R
+    double capacidad_faradios = t_tau / resistencia_ohms;
+
+    // Lo convertimos a NanoFaradios (nF) para devolver un entero cómodo para la UI
+    uint32_t capacidad_nf = (uint32_t)(capacidad_faradios * 1000000000.0);
+
+    return capacidad_nf;
+}
+
+//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+//{
+//    buffer_ready = TRUE;
+//}
+
+/**
+ * @brief Hice que cuando se llene el buffer el callback
+ * levante a la tarea default, así podemos muestrear
+ * con un tiempo fijo.
+ */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    buffer_ready = TRUE;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // Despierta a la tarea de medición inmediatamente cuando el buffer de 256 muestras está lleno
+    vTaskNotifyGiveFromISR(defaultTaskHandle, &xHigherPriorityTaskWoken);
+
+    // Fuerza el cambio de contexto si la prioridad de defaultTask es mayor que la interrumpida
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 /* Funciones para el analizador logico */
@@ -633,101 +771,236 @@ void callback_out(int tag){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* USER CODE BEGIN 5 */
-
+	/* USER CODE BEGIN 5 */
 	vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_MUESTREO);
 
-  TickType_t last_tick_type = xTaskGetTickCount();
+	RangeState_t current_range = RANGE_10K;
+	TimeBase_t current_time_base = TIME_BASE_MEDIA;
+	Parametro_e parametro_anterior = config1.parametro;
 
-  uint16_t buffer_index = 0;
+	set_hardware_range(current_range);
+	HAL_ADCEx_Calibration_Start(&hadc1);
 
-  /* Infinite loop */
-  for(;;)
-  {
+	// Inicialización rápida de arranque para modo Resistencia (100 us por muestra en TIM3)
+	__HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_RAPIDO);
+	HAL_TIM_Base_Start(&htim3);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
 
-	  if (ui1.ui_estado != ESTADO_MEDIDA) {
-		  vTaskDelayUntil(&last_tick_type, 1000);
-	  } else {
+	/* Infinite loop */
+	for(;;)
+	{
+		// 1. SI NO ESTAMOS EN MEDIDA: Apagamos hardware y esperamos de forma pasiva
+		if (ui1.ui_estado != ESTADO_MEDIDA) {
+			HAL_ADC_Stop_DMA(&hadc1);
+			HAL_TIM_Base_Stop(&htim3);
 
-		  // Se lee el buffer
-		  if (buffer_ready) {
-			  buffer_ready = FALSE;
+			osDelay(200); // Espera pasiva que no traba al scheduler
 
-			  uint32_t acc = 0;
-			  uint16_t raw_avg = 0;
-			  for (buffer_index = 0; buffer_index < ADC_BUFFER_SIZE; buffer_index++)
-				  acc += adc_buffer[buffer_index];
+			// Fuerza la sincronización total del hardware al regresar a medir
+			parametro_anterior = (config1.parametro == PARAMETRO_R) ? PARAMETRO_C : PARAMETRO_R;
+			continue;
+		}
 
+		// 2. CONTROL DE TRANSICIÓN (Solo actúa en el momento exacto del cambio R <-> C)
+		if (config1.parametro != parametro_anterior)
+		{
+			HAL_TIM_Base_Stop(&htim3);
+			HAL_ADC_Stop_DMA(&hadc1);
+			__HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC | ADC_FLAG_AWD);
+			ulTaskNotifyTake(pdTRUE, 0); // Flush de notificaciones viejas
 
-			  // se guarda la media de las muestras
-			  raw_avg = acc / ADC_BUFFER_SIZE;
+			if (config1.parametro == PARAMETRO_R)
+			{
+				current_range = RANGE_10K;
+				set_hardware_range(current_range);
+				__HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_RAPIDO); // 100us para R
+				__HAL_TIM_SET_COUNTER(&htim3, 0);
 
-			  buffer_index = 0;
+				HAL_TIM_Base_Start(&htim3);
+				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
+			}
+			else if (config1.parametro == PARAMETRO_C)
+			{
+				current_range = RANGE_10K;
+				current_time_base = TIME_BASE_MEDIA;
+				set_hardware_range(current_range);
+			}
 
+			parametro_anterior = config1.parametro;
+		}
 
-			  // Acá se tienen que procesar las muestras
-			  MuestreoQueue_t muestreoQueueSample;
+		// ====================================================================
+		// MODO RESISTENCIA (Lazo Continuo por Interrupciones)
+		// ====================================================================
+		if (config1.parametro == PARAMETRO_R)
+		{
+			if (hadc1.State == HAL_ADC_STATE_READY) {
+				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
+				HAL_TIM_Base_Start(&htim3);
+			}
 
-			  if (config1.parametro == PARAMETRO_C) {
+			// La tarea se bloquea liberando el procesador hasta que el DMA se llene (25.6 ms)
+			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-			  } else if (config1.parametro == PARAMETRO_R) {
+			uint32_t acc = 0;
+			for (uint16_t i = 0; i < ADC_BUFFER_SIZE; i++) {
+				acc += adc_buffer[i];
+			}
 
-				  // TODO: configurar TIM3 para que sea 100us o menos, cuando
-				  // se mide resistencia, y lo mismo para 1ms cuando se mide C
+#define VCC_AL_95_PORCIENTO (62259)
+#define VCC_AL_2_PORCIENTO (1310)
 
-				  if (adc_buffer[buffer_index] <= VCC_AL_95_PORCIENTO) {
-					  muestreoQueueSample.processed = (VALOR_RESISTOR_330_OHMS * raw_avg) / (VCC_MV - raw_avg);
-					  muestreoQueueSample.raw = raw_avg;
-					  //							*unit = OHMS;
-					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
-					  HAL_ADC_Start_DMA(&hadc1,
-							  (uint32_t *)adc_buffer,
-							  ADC_BUFFER_SIZE);
-					  continue;
-				  }
+			uint16_t adc_16bit = acc / 16; // Decimación a 16 bits
+			Bool range_changed = FALSE;
 
-				  set_resistencia(RESISTOR_10K);
+			// Evaluar autorango de Resistencia
+			if (adc_16bit >= VCC_AL_95_PORCIENTO) {
+				if (current_range == RANGE_330R) { current_range = RANGE_10K; range_changed = TRUE; }
+				else if (current_range == RANGE_10K) { current_range = RANGE_1M; range_changed = TRUE; }
+			}
+			else if (adc_16bit <= VCC_AL_2_PORCIENTO) {
+				if (current_range == RANGE_1M) { current_range = RANGE_10K; range_changed = TRUE; }
+				else if (current_range == RANGE_10K) { current_range = RANGE_330R; range_changed = TRUE; }
+			}
 
-				  buffer_index++;
-				  if (adc_buffer[buffer_index] <= VCC_AL_95_PORCIENTO) {
-					  muestreoQueueSample.processed = (VALOR_RESISTOR_10K_OHMS * raw_avg) / (VCC_MV - raw_avg);
-					  muestreoQueueSample.raw = raw_avg;
-					  //							*unit = OHMS;
-					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
-					  HAL_ADC_Start_DMA(&hadc1,
-							  (uint32_t *)adc_buffer,
-							  ADC_BUFFER_SIZE);
-					  continue;
-				  }
+			if (range_changed) {
+				set_hardware_range(current_range);
+				osDelay(5); // Tiempo de asentamiento del transitorio eléctrico
 
-				  set_resistencia(RESISTOR_1M);
+				// Limpieza y reinicio inmediato del DMA sin saltear el flujo
+				HAL_ADC_Stop_DMA(&hadc1);
+				__HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC | ADC_FLAG_AWD);
+				ulTaskNotifyTake(pdTRUE, 0);
 
-				  buffer_index++;
-				  if (adc_buffer[buffer_index] < VCC_AL_95_PORCIENTO) {
-					  muestreoQueueSample.processed = ( (VALOR_RESISTOR_1M_OHMS * raw_avg) / (VCC_MV - raw_avg) ) / 1000;
-					  muestreoQueueSample.raw = raw_avg;
-					  //							*unit = KILO_OHMS;
-					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
-				  } else {
-					  // ESTO sería si todo falla
-					  muestreoQueueSample.processed = FALLO_R_FUERA_DE_ESCALA;
-					  muestreoQueueSample.raw = raw_avg;
-					  //							*unit = MEGA_OHMS;
-					  osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
-				  }
+				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
+			}
+			else
+			{
+				MuestreoQueue_t muestreoQueueSample;
+				muestreoQueueSample.raw = adc_16bit;
+#define VCC_16_BITS (65000)
 
-				  HAL_ADC_Start_DMA(&hadc1,
-						  (uint32_t *)adc_buffer,
-						  ADC_BUFFER_SIZE);
+				if (current_range == RANGE_330R) {
+					muestreoQueueSample.processed = (VALOR_RESISTOR_330_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit);
+					muestreoQueueSample.unit = OHMS;
+				} else if (current_range == RANGE_10K) {
+					muestreoQueueSample.processed = (VALOR_RESISTOR_10K_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit);
+					muestreoQueueSample.unit = OHMS;
+				} else if (current_range == RANGE_1M) {
+					muestreoQueueSample.processed = ((VALOR_RESISTOR_1M_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit)) / 1000;
+					muestreoQueueSample.unit = KILO_OHMS;
+				}
 
-			  }
+				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
 
-		  }
+				// Volvemos a disparar para el próximo lote continuo
+				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
+			}
+		}
 
-		  vTaskDelayUntil(&last_tick_type, 5);
-	  }
-  }
-  /* USER CODE END 5 */
+		// ====================================================================
+		// MODO CAPACIDAD (Lazo por Ráfagas / Burst)
+		// ====================================================================
+		else if (config1.parametro == PARAMETRO_C)
+		{
+			// Apagar temporizadores de ráfagas anteriores
+			HAL_TIM_Base_Stop(&htim3);
+			HAL_ADC_Stop_DMA(&hadc1);
+			if (hadc1.State == HAL_ADC_STATE_REG_BUSY || hadc1.State == HAL_ADC_STATE_BUSY_INTERNAL) {
+				hadc1.State = HAL_ADC_STATE_READY;
+			}
+			__HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC | ADC_FLAG_AWD);
+
+			// FASE DE DESCARGA
+			HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin | GPIO10K_Pin | GPIO1M_Pin, GPIO_PIN_RESET);
+
+			uint16_t adc_val = 4095;
+			uint32_t descarga_timeout = HAL_GetTick();
+
+			// El bucle romperá por descarga (<30) o por timeout (max 100ms)
+			while(adc_val > 30 && (HAL_GetTick() - descarga_timeout < 100)) {
+				HAL_ADC_Start(&hadc1);
+				if (HAL_ADC_PollForConversion(&hadc1, 5) == HAL_OK) {
+					adc_val = HAL_ADC_GetValue(&hadc1);
+				}
+				HAL_ADC_Stop(&hadc1);
+				osDelay(2); // Cede CPU a la UI mientras descarga para mantener el encoder responsivo
+			}
+
+			// CONFIGURAR NUEVA BASE DE TIEMPO
+			switch(current_time_base) {
+			case TIME_BASE_RAPIDA: __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_RAPIDO); break;
+			case TIME_BASE_MEDIA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_MEDIO); break;
+			case TIME_BASE_LENTA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_LENTO); break;
+			}
+			__HAL_TIM_SET_COUNTER(&htim3, 0);
+
+			ulTaskNotifyTake(pdTRUE, 0); // Limpieza de notificaciones residuales
+
+			if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE) != HAL_OK) {
+				hadc1.State = HAL_ADC_STATE_READY;
+				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
+			}
+
+			HAL_TIM_Base_Start(&htim3); // El timer comienza a disparar el ADC
+
+			// INICIAR CARGA ELÉCTRICA
+			if (current_range == RANGE_330R) HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin, GPIO_PIN_SET);
+			else if (current_range == RANGE_10K) HAL_GPIO_WritePin(GPIOB, GPIO10K_Pin, GPIO_PIN_SET);
+			else if (current_range == RANGE_1M) HAL_GPIO_WritePin(GPIOB, GPIO1M_Pin, GPIO_PIN_SET);
+
+			// Espera pasiva de buffer lleno (Con timeout de respaldo de 500ms para evitar trabar el RTOS)
+			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
+
+			if (notificado == 0) {
+				continue; // Si se trabó la ráfaga, reintenta de forma limpia en el próximo ciclo
+			}
+
+			// ANALIZAR DINÁMICA DE LA CURVA RC
+#define UMBRAL_TAU (2589)
+			int16_t indice_tau = -1;
+
+			for (uint16_t i = 0; i < ADC_BUFFER_SIZE; i++) {
+				if (adc_buffer[i] >= UMBRAL_TAU) {
+					indice_tau = i;
+					break;
+				}
+			}
+
+			// EVALUAR AUTORANGO DE CAPACIDAD
+			Bool rango_valido = TRUE;
+
+			if (indice_tau == -1) {
+				rango_valido = FALSE;
+				if (current_time_base == TIME_BASE_RAPIDA) current_time_base = TIME_BASE_MEDIA;
+				else if (current_time_base == TIME_BASE_MEDIA) current_time_base = TIME_BASE_LENTA;
+				else current_range = RANGE_330R;
+			}
+			else if (indice_tau < 12) {
+				rango_valido = FALSE;
+				if (current_time_base == TIME_BASE_LENTA) current_time_base = TIME_BASE_MEDIA;
+				else if (current_time_base == TIME_BASE_MEDIA) current_time_base = TIME_BASE_RAPIDA;
+				else current_range = RANGE_1M;
+			}
+
+			if (!rango_valido) {
+				set_hardware_range(current_range);
+				osDelay(50); // Evitamos bucle a máxima velocidad para no saturar la cola de la UI
+			}
+			else
+			{
+				MuestreoQueue_t muestreoQueueSample;
+				muestreoQueueSample.raw = adc_buffer[indice_tau];
+				muestreoQueueSample.processed = calcular_capacidad_final(indice_tau, current_time_base, current_range);
+				muestreoQueueSample.unit = NANO_FARADIOS;
+
+				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+
+				osDelay(200); // Pausa recomendada entre ciclos estables de capacidad
+			}
+		}
+	}
+	/* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_oledEntry */
@@ -756,7 +1029,6 @@ void oledEntry(void *argument)
 
   MuestreoQueue_t queueBuffer = {0};
 
-  uint16_t latest_samples[4] = {0};
   uint8_t samples_index = 0;
 
   /* Infinite loop */
@@ -775,15 +1047,19 @@ void oledEntry(void *argument)
 
 	/* Se adquiere la última muestra*/
 	samples_index = 0;
+	data_monitor_buffer.muestreo_data[0].raw = 0;
+	data_monitor_buffer.muestreo_data[1].raw = 0;
+	data_monitor_buffer.muestreo_data[2].raw = 0;
+	data_monitor_buffer.muestreo_data[3].raw = 0;
 	while (osMessageQueueGet(muestreoQueueHandle, &queueBuffer, NULL, 0) == osOK){
 		ui_FSM_switch(&ui1, &config1, EV_NEW_SAMPLE);
-		latest_samples[samples_index++] = queueBuffer.raw;
+		data_monitor_buffer.muestreo_data[samples_index++] = queueBuffer;
 	}
 
 
 	/* Actualizo pantalla si es necesario*/
 	if (ui1.ui_update_sel || ui1.ui_update_background || ui1.ui_update_datos){
-		ui_update_oled(&ui1, &config1, &data_monitor_buffer, latest_samples);
+		ui_update_oled(&ui1, &config1, &data_monitor_buffer);
 		ui1.ui_update_sel = 0;
 		ui1.ui_update_background = 0;
 		ui1.ui_update_datos = 0;

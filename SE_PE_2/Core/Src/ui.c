@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "fonts.h"
 
-//extern Unidad_t unit;
+//extern Bool auto_rango_enabled;
 uint8_t sample_index = 0;
 
 //void ui_init(UI_t *ui, MonitorData_t *data_monitor){
@@ -26,7 +26,7 @@ void ui_init(UI_t *ui){
 //
 //}
 
-void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uint16_t samples[4]){
+void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 
 		char val[15];
 
@@ -151,10 +151,11 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uin
 //						fondo_escala = 10000;
 //					}
 					for (uint8_t i = 0; i < 4; i++) {
-						converted_sample = SSD1306_HEIGHT  - samples[i] * SSD1306_HEIGHT / 4095 + 15;
+						if (data_monitor->muestreo_data[i].raw == 0) continue;
+						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / 65535 + 15;
 						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
+						sample_index++;
 					}
-					sample_index++;
 
 				} else if (config->parametro == PARAMETRO_C) {
 					converted_sample = 0;
@@ -162,6 +163,21 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor, uin
 				if (sample_index > SSD1306_WIDTH) {
 					sample_index = 0;
 					ui->ui_update_background = 1;
+//					auto_rango_enabled = 1;
+				}
+
+				SSD1306_GotoXY(90, 50);
+				snprintf(val, sizeof(val), "05%ld", data_monitor->muestreo_data->processed);
+				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
+
+				SSD1306_GotoXY(108, 3);
+				switch (data_monitor->muestreo_data->unit) {
+				case OHMS: SSD1306_Puts("~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+				case KILO_OHMS: SSD1306_Puts("K~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+				case MEGA_OHMS: SSD1306_Puts("M~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+				case MICRO_FARADIOS: SSD1306_Puts("uF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+				case NANO_FARADIOS: SSD1306_Puts("nF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+				case PICO_FARADIOS: SSD1306_Puts("pF", &Font_7x10, SSD1306_COLOR_WHITE); break;
 				}
 			}
 
@@ -326,6 +342,7 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 				ui->ui_estado = ESTADO_MEDIDA;
 				ui->ui_update_background = 1;
 				ui->ui_update_datos = 1;
+				sample_index = 0;
 				break;
 			case SEL_DIAG:
 				ui->ui_estado = ESTADO_DIAG;
