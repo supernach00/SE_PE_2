@@ -2,6 +2,7 @@
 
 # TODO
 ## Si o si
+- [ ] Mirar los TODO que dejé en el código
 - [ ] Hacer diagramas
 - [ ] Hacer informe
 - [ ] Agregar Hardware y testear las mediciones.

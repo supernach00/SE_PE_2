@@ -93,7 +93,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 256 * 4,
+  .stack_size = 384 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for inputsTask */
@@ -569,7 +569,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, DEBUG_PIN_Pin|HOOK_IDLE_Pin|HOOK_MONITOR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK5_Pin|GPIO330R_Pin
+  HAL_GPIO_WritePin(GPIOB, HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK_MUESTREO_Pin|GPIO330R_Pin
                           |GPIO10K_Pin|GPIO1M_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BOTON_ENCODER_Pin */
@@ -585,9 +585,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HOOK_UI_Pin HOOK_INPUTS_Pin HOOK5_Pin GPIO330R_Pin
+  /*Configure GPIO pins : HOOK_UI_Pin HOOK_INPUTS_Pin HOOK_MUESTREO_Pin GPIO330R_Pin
                            GPIO10K_Pin GPIO1M_Pin */
-  GPIO_InitStruct.Pin = HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK5_Pin|GPIO330R_Pin
+  GPIO_InitStruct.Pin = HOOK_UI_Pin|HOOK_INPUTS_Pin|HOOK_MUESTREO_Pin|GPIO330R_Pin
                           |GPIO10K_Pin|GPIO1M_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -798,7 +798,7 @@ void callback_in(int tag)
 	case TAG_TASK_INPUTS:   HAL_GPIO_WritePin(HOOK_INPUTS_GPIO_Port, HOOK_INPUTS_Pin, GPIO_PIN_SET); break;
 	case TAG_TASK_UI:       HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_UI_Pin, GPIO_PIN_SET); break;
 	case TAG_TASK_MONITOR:  HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_SET); break;
-	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK5_GPIO_Port, HOOK5_Pin, GPIO_PIN_SET); break;
+	case TAG_TASK_MUESTREO: HAL_GPIO_WritePin(HOOK_MUESTREO_GPIO_Port, HOOK_MUESTREO_Pin, GPIO_PIN_SET); break;
 	default: break;
 	}
 }
@@ -813,7 +813,7 @@ void callback_out(int tag){
 	case TAG_TASK_INPUTS:      HAL_GPIO_WritePin(HOOK_INPUTS_GPIO_Port, HOOK_INPUTS_Pin, GPIO_PIN_RESET);break;
 	case TAG_TASK_UI:          HAL_GPIO_WritePin(HOOK_UI_GPIO_Port, HOOK_UI_Pin, GPIO_PIN_RESET);break;
 	case TAG_TASK_MONITOR:     HAL_GPIO_WritePin(HOOK_MONITOR_GPIO_Port, HOOK_MONITOR_Pin, GPIO_PIN_RESET);break;
-	case TAG_TASK_MUESTREO:    HAL_GPIO_WritePin(HOOK5_GPIO_Port, HOOK5_Pin, GPIO_PIN_RESET);break;
+	case TAG_TASK_MUESTREO:    HAL_GPIO_WritePin(HOOK_MUESTREO_GPIO_Port, HOOK_MUESTREO_Pin, GPIO_PIN_RESET);break;
 	default: break;
 	}
 }
@@ -828,7 +828,7 @@ void callback_out(int tag){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-	/* USER CODE BEGIN 5 */
+  /* USER CODE BEGIN 5 */
 	vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_MUESTREO);
 
 	RangeState_t current_range = RANGE_10K;
@@ -902,10 +902,12 @@ void StartDefaultTask(void *argument)
 			// La tarea se bloquea liberando el procesador hasta que el DMA se llene (25.6 ms)
 			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+			HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 			uint32_t acc = 0;
 			for (uint16_t i = 0; i < ADC_BUFFER_SIZE; i++) {
 				acc += adc_buffer[i];
 			}
+			HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 
 #define VCC_AL_95_PORCIENTO (62259)
 #define VCC_AL_5_PORCIENTO (3276)
@@ -963,7 +965,10 @@ void StartDefaultTask(void *argument)
 					muestreoQueueSample.unit = KILO_OHMS;
 				}
 
+
+//				HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
+//				HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 
 				// Volvemos a disparar para el próximo lote continuo
 				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
@@ -997,7 +1002,7 @@ void StartDefaultTask(void *argument)
 					adc_val = HAL_ADC_GetValue(&hadc1);
 				}
 				HAL_ADC_Stop(&hadc1);
-				osDelay(2); // libero CPU mientas se espera
+				osDelay(5); // libero CPU mientas se espera
 			}
 
 			// CONFIGURAR NUEVA BASE DE TIEMPO
@@ -1026,10 +1031,11 @@ void StartDefaultTask(void *argument)
 			// me pareció mejor usar lo que ya habías hecho, que ya funcionaba
 			configurar_carga();
 
-			// Espera pasiva de buffer lleno (Con timeout de respaldo de 500ms para evitar trabar el RTOS)
-			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
+			// Espera pasiva de buffer lleno (Con timeout de respaldo de 3s para evitar trabar el RTOS)
+			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
 
 			if (notificado == 0) {
+				// TODO: cambiar base de tiempo
 				continue; // Si se trabó la ráfaga, reintenta de forma limpia en el próximo ciclo
 			}
 
@@ -1073,7 +1079,7 @@ void StartDefaultTask(void *argument)
 
 				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
 
-				osDelay(2);
+				osDelay(10);
 
 				// ESTO ES SÓLO SI SE USA EL MODO DONDE SE IMPRIME EL BUFFER EN PANTALLA
 				// TODO: este retardo es importante, así no saturo el CPU
@@ -1083,7 +1089,7 @@ void StartDefaultTask(void *argument)
 
 		}
 	}
-	/* USER CODE END 5 */
+  /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_oledEntry */
@@ -1305,7 +1311,7 @@ void monitorEntry(void *argument)
 #define PERIODO_FU_MS (1000) // TODO: revisar
 	 if (HAL_GetTick() - FU_average_timer >= PERIODO_FU_MS) {
 		 FU_average_timer = HAL_GetTick();
-		 HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
+//		 HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 
 		 // se calcula el FU con un periodod de PERIODO_FU_MS en porcentaje
 		 uint32_t fu = ( FU_acc * 100 ) / PERIODO_FU_MS;

@@ -71,8 +71,8 @@ void Error_Handler(void);
 #define HOOK_UI_GPIO_Port GPIOB
 #define HOOK_INPUTS_Pin GPIO_PIN_1
 #define HOOK_INPUTS_GPIO_Port GPIOB
-#define HOOK5_Pin GPIO_PIN_10
-#define HOOK5_GPIO_Port GPIOB
+#define HOOK_MUESTREO_Pin GPIO_PIN_10
+#define HOOK_MUESTREO_GPIO_Port GPIOB
 #define GPIO330R_Pin GPIO_PIN_13
 #define GPIO330R_GPIO_Port GPIOB
 #define GPIO10K_Pin GPIO_PIN_14

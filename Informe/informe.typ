@@ -125,12 +125,11 @@
 
   = Muestreo
 
-  La idea es tomar 256 muestras con el ADC y hacer el promedio, para luego obtener una mayor resolución, ya que los ADC del STM32F103C8T6 son de 12 bits, pero al hacer sobremuestreo, se puede alcanzar una precisión equivalente de 16 bits (#lk("https://controllerstech.com/stm32-adc-9-adc-oversampling/", "https://controllerstech.com/stm32-adc-9-adc-oversampling/")), la relación de sobremuestras a bits de precisión extra es: \
+  La idea es tomar 256 muestras con el ADC y hacer diezmado (en 16), para luego obtener una mayor resolución, ya que los ADC del STM32F103C8T6 son de 12 bits, pero al hacer sobremuestreo, se puede alcanzar una precisión equivalente de 16 bits (#lk("https://controllerstech.com/stm32-adc-9-adc-oversampling/", "https://controllerstech.com/stm32-adc-9-adc-oversampling/")), la relación de sobremuestras a bits de precisión extra es: \
   #equation($"Bits extras" = (1/2) log_2(N)$)
   Con N siendo el número de muestras acumuladas (sobremuestras). \
   Por lo que si se sobremuestrea x256 se ganan 4 bits más de precisión. \
   _Esto se da bajo ciertas condiciones que se pueden leer en el #lk("link", "https://controllerstech.com/stm32-adc-9-adc-oversampling/")_
-la misma lo imprima en pantalla.
-   
+  la misma lo imprima en pantalla.
 
 ]
