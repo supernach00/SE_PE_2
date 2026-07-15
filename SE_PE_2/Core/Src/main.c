@@ -41,7 +41,6 @@ typedef StaticQueue_t osStaticMessageQDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUFFER_SIZE (256)
 
 // -----------------------------------------------------
 // TODO: factorizar esto a donde corresponde
@@ -151,7 +150,7 @@ volatile uint32_t FU_acc = 0;
 volatile uint32_t FU_time_delta = 0;
 
 /* Globales para UI */
-volatile UI_t ui1 = {
+UI_t ui1 = {
 	ESTADO_INICIO,
 	0, // Seleccion inicial
 	1, // Flag update background
@@ -161,7 +160,7 @@ volatile UI_t ui1 = {
 
 Config_t config1 = { // Configuracion default
 	.modo = MODO_MULTIPLE,
-	.parametro = PARAMETRO_R,
+	.parametro = PARAMETRO_C,
 };
 
 /* USER CODE END PV */
@@ -183,6 +182,9 @@ void monitorEntry(void *argument);
 void UI_FSM_Switch(UI_t *ui, Evento_e evento);
 void callback_in(int tag);
 void callback_out(int tag);
+
+void configurar_descarga();
+void configurar_carga();
 
 /**
  * Ajustan los GPIOs para el fondo de escala más adecuado
@@ -235,10 +237,6 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
-//  HAL_ADC_Start_DMA(&hadc1,
-//		  (uint32_t *)adc_buffer,
-//		  ADC_BUFFER_SIZE);
 
   // Se comienza el Timer 3 que da la base de tiempo
   // para la conversión del ADC 1
@@ -730,6 +728,65 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+/**
+ * @brief Se configuran los GPIOs para que se descargue
+ * la capacidad equivalente
+ */
+void configurar_descarga() {
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	// TODO: preguntar orden de WritePin
+	HAL_GPIO_WritePin(GPIO330R_GPIO_Port, GPIO330R_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIO10K_GPIO_Port, GPIO10K_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIO1M_GPIO_Port, GPIO1M_Pin, GPIO_PIN_RESET);
+
+	GPIO_InitStruct.Pin = GPIO330R_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = GPIO10K_Pin|GPIO1M_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT; // Z
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+/**
+ * @brief se configuran los GPIOs para que se cargue
+ * la capacidad equivalente con una resistencia de 1M
+ */
+void configurar_carga() {
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	// Bajo los 3 pines
+	HAL_GPIO_WritePin(GPIO330R_GPIO_Port, GPIO330R_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIO10K_GPIO_Port, GPIO10K_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIO1M_GPIO_Port, GPIO1M_Pin, GPIO_PIN_RESET);
+
+	//1M como salida en bajo (no pull up ni pull down)
+	GPIO_InitStruct.Pin = GPIO1M_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIO1M_GPIO_Port, &GPIO_InitStruct);
+
+	// El resto (10k y 330ohm) en alta impedancia
+	GPIO_InitStruct.Pin = GPIO330R_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT; // Z
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIO330R_GPIO_Port, &GPIO_InitStruct);
+	GPIO_InitStruct.Pin = GPIO10K_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT; // Z
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIO10K_GPIO_Port, &GPIO_InitStruct);
+
+	// 1M en alto
+	HAL_GPIO_WritePin(GPIO1M_GPIO_Port, GPIO1M_Pin, GPIO_PIN_SET);
+
+}
+
+
 /* Funciones para el analizador logico */
 void callback_in(int tag)
 {
@@ -821,7 +878,10 @@ void StartDefaultTask(void *argument)
 			}
 			else if (config1.parametro == PARAMETRO_C)
 			{
-				current_range = RANGE_10K;
+				// TODO: tiene sentido esto?
+				// o no debería configurar esto?
+				// yo lo sacaría
+				current_range = RANGE_1M;
 				current_time_base = TIME_BASE_MEDIA;
 				set_hardware_range(current_range);
 			}
@@ -924,19 +984,20 @@ void StartDefaultTask(void *argument)
 			__HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_EOC | ADC_FLAG_AWD);
 
 			// FASE DE DESCARGA
-			HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin | GPIO10K_Pin | GPIO1M_Pin, GPIO_PIN_RESET);
+			configurar_descarga(); // esta la reciclé del TP pasado
 
 			uint16_t adc_val = 4095;
 			uint32_t descarga_timeout = HAL_GetTick();
 
 			// El bucle romperá por descarga (<30) o por timeout (max 100ms)
+			// esto es por si se llega a tnener una capacidad muy grande, que no se cuelgue acá
 			while(adc_val > 30 && (HAL_GetTick() - descarga_timeout < 100)) {
 				HAL_ADC_Start(&hadc1);
 				if (HAL_ADC_PollForConversion(&hadc1, 5) == HAL_OK) {
 					adc_val = HAL_ADC_GetValue(&hadc1);
 				}
 				HAL_ADC_Stop(&hadc1);
-				osDelay(2); // Cede CPU a la UI mientras descarga para mantener el encoder responsivo
+				osDelay(2); // libero CPU mientas se espera
 			}
 
 			// CONFIGURAR NUEVA BASE DE TIEMPO
@@ -947,7 +1008,8 @@ void StartDefaultTask(void *argument)
 			}
 			__HAL_TIM_SET_COUNTER(&htim3, 0);
 
-			ulTaskNotifyTake(pdTRUE, 0); // Limpieza de notificaciones residuales
+			// limpio notificaciones para que no se cuelgue CPU
+			ulTaskNotifyTake(pdTRUE, 0);
 
 			if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE) != HAL_OK) {
 				hadc1.State = HAL_ADC_STATE_READY;
@@ -957,9 +1019,12 @@ void StartDefaultTask(void *argument)
 			HAL_TIM_Base_Start(&htim3); // El timer comienza a disparar el ADC
 
 			// INICIAR CARGA ELÉCTRICA
-			if (current_range == RANGE_330R) HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin, GPIO_PIN_SET);
-			else if (current_range == RANGE_10K) HAL_GPIO_WritePin(GPIOB, GPIO10K_Pin, GPIO_PIN_SET);
-			else if (current_range == RANGE_1M) HAL_GPIO_WritePin(GPIOB, GPIO1M_Pin, GPIO_PIN_SET);
+//			if (current_range == RANGE_330R) HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin, GPIO_PIN_SET);
+//			else if (current_range == RANGE_10K) HAL_GPIO_WritePin(GPIOB, GPIO10K_Pin, GPIO_PIN_SET);
+//			else if (current_range == RANGE_1M) HAL_GPIO_WritePin(GPIOB, GPIO1M_Pin, GPIO_PIN_SET);
+			// cambié esto con lo que hicimos en el TP pasado, porque
+			// me pareció mejor usar lo que ya habías hecho, que ya funcionaba
+			configurar_carga();
 
 			// Espera pasiva de buffer lleno (Con timeout de respaldo de 500ms para evitar trabar el RTOS)
 			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
@@ -1008,8 +1073,14 @@ void StartDefaultTask(void *argument)
 
 				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
 
-				osDelay(200); // Pausa recomendada entre ciclos estables de capacidad
+				osDelay(2);
+
+				// ESTO ES SÓLO SI SE USA EL MODO DONDE SE IMPRIME EL BUFFER EN PANTALLA
+				// TODO: este retardo es importante, así no saturo el CPU
+				// con esta tarea, habría que ajustarlo con el logicAnalyzer capaz
+//				osDelay(500);
 			}
+
 		}
 	}
 	/* USER CODE END 5 */

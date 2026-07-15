@@ -10,6 +10,8 @@
 
 #include "main.h"
 
+#define ADC_BUFFER_SIZE (256)
+
 typedef enum {
 	OHMS,
 	KILO_OHMS,

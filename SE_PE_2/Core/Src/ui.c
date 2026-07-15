@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include "fonts.h"
 
+// esta es la distancia mínima del borde superior
+#define SCREEN_MIN_HEIGHT (15)
+
+extern uint16_t adc_buffer[ADC_BUFFER_SIZE];
+
 //extern Bool auto_rango_enabled;
 uint8_t sample_index = 0;
 
@@ -152,22 +157,47 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 //					}
 					for (uint8_t i = 0; i < 4; i++) {
 						if (data_monitor->muestreo_data[i].raw == 0) continue;
-						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / 65535 + 15;
+						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / 65535 + SCREEN_MIN_HEIGHT;
 						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
 						sample_index++;
 					}
 
 				} else if (config->parametro == PARAMETRO_C) {
-					converted_sample = 0;
+
+					for (uint8_t i = 0; i < 4; i++) {
+						if (data_monitor->muestreo_data[i].raw == 0) continue;
+						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
+						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
+						sample_index++;
+					}
+
+					// IMPORTANTE: una llamada a esto desde DefaultTask
+					// dispara la impresión de todas las muestras
+					// RECORDAR no llamar muchas veces esto
+
+					// Este modo está bueno, pero no es lo que se pide
+					// -------------------------------------------
+					// Acá lo que hago es iterar el loop con las muestras
+					// y las muestro en pantalla
+					// en realidad no entra todo el buffer,
+					// TODO: como podríamos hacer esto mejor??
+//					for (uint8_t i = 0; i < SSD1306_WIDTH; i++) {
+//						// En modo capacidad en maximo valor es el de 12 bits
+//						converted_sample = SSD1306_HEIGHT  - adc_buffer[i*2] * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
+//						SSD1306_DrawPixel(i, converted_sample, SSD1306_COLOR_WHITE);
+//						sample_index++;
+//					}
+					// -------------------------------------------
+
 				}
+
 				if (sample_index > SSD1306_WIDTH) {
 					sample_index = 0;
 					ui->ui_update_background = 1;
-//					auto_rango_enabled = 1;
 				}
 
 				SSD1306_GotoXY(80, 52);
-				snprintf(val, sizeof(val), "%05ld", data_monitor->muestreo_data->processed);
+				snprintf(val, sizeof(val), "%05d", data_monitor->muestreo_data->processed);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 
 //				SSD1306_GotoXY(108, 3);
