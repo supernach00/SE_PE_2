@@ -12,6 +12,7 @@
 
 
 # Opcional
+- [ ] Agregar una opción para elegir un factor de amplificación, para que se aproveche más el rango del display para capacidades y resistencias variables
 - [ ] Agregar modo de display de transitorio de capacidad
 - [ ] Hacer PCB
 - [x] Agregar número de la medida actual
