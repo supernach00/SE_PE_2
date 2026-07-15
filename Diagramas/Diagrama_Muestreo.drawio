@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="Drn2XPwP6ZGBAtVF-DJq">
+    <mxGraphModel dx="2415" dy="1418" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-1" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-7" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="Se despierta&lt;br&gt;muestreoTask" vertex="1">
+          <mxGeometry height="80" width="120" x="796.7600000000002" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-3" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-4" connectable="0" parent="r-96WGb4OpSe_ctRwE3t-3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;" value="RESISTENCIA" vertex="1">
+          <mxGeometry relative="1" x="-0.3298" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-5" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-6" connectable="0" parent="r-96WGb4OpSe_ctRwE3t-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;" value="CAPACIDAD" vertex="1">
+          <mxGeometry relative="1" x="-0.3217" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-7" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="MODO" vertex="1">
+          <mxGeometry height="80" width="80" x="816.7600000000002" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-8" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-19" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="ARR=RAPIDO&lt;br&gt;GPIOs 10K" vertex="1">
+          <mxGeometry height="60" width="120" x="1040" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-10" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-24" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="ARR=MEDIO&lt;br&gt;GPIOs descarga" vertex="1">
+          <mxGeometry height="60" width="120" x="560" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-12" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Muestreo sin CPU&lt;br&gt;TIM3+ADC+DMA" vertex="1">
+          <mxGeometry height="100" width="170" x="535" y="815" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-14" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-28" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-15" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-29" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Se despierta la tarea&lt;br&gt;con el buffer lleno&lt;br&gt;y procesa los datos" vertex="1">
+          <mxGeometry height="100" width="170" x="535" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-17" parent="1" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.flash;fillColor=#fff2cc;strokeColor=#d6b656;rotation=0;" value="" vertex="1">
+          <mxGeometry height="40" width="20" x="630" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-18" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-21" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Muestreo sin CPU&lt;br&gt;TIM3+ADC+DMA" vertex="1">
+          <mxGeometry height="100" width="170" x="1015" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-20" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-31" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Se despierta la tarea&lt;br&gt;y procesa los datos" vertex="1">
+          <mxGeometry height="100" width="170" x="1015" y="815" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-22" parent="1" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.flash;fillColor=#fff2cc;strokeColor=#d6b656;rotation=0;" value="" vertex="1">
+          <mxGeometry height="40" width="20" x="1110" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-23" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-26" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-24" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Descarga C" vertex="1">
+          <mxGeometry height="55" width="125" x="557.5" y="622.5" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-25" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Configurar GPIOs&lt;br&gt;para carga" vertex="1">
+          <mxGeometry height="60" width="120" x="560" y="715" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-27" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="r-96WGb4OpSe_ctRwE3t-24">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="650" />
+            </Array>
+            <mxPoint x="450" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-28" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Se itera el buffer, viendo cuando se pasa el 63%, si este valor se da en pocas muestras, se ajusta el ARR del TIM3. Lo mismo pasa si nunca se llega al valor dentro del buffer.&lt;br&gt;&lt;br&gt;(ESTO ES EL AUTORANGO DE CAPACIDAD)" vertex="1">
+          <mxGeometry height="160" width="210" x="270" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-29" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Se calcula la capacidad&lt;br&gt;&lt;div&gt;Y se envía a&lt;/div&gt;&lt;div&gt;&amp;nbsp;MuestreoQueue&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="175" x="532.5" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-30" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-35" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-31" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="muestra=SUM(buffer)/16" vertex="1">
+          <mxGeometry height="83" width="167.5" x="1016.25" y="967" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-32" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-37" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-33" connectable="0" parent="r-96WGb4OpSe_ctRwE3t-32" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=15;" value="NO" vertex="1">
+          <mxGeometry relative="1" x="-0.1368" y="3" as="geometry">
+            <mxPoint x="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-34" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="r-96WGb4OpSe_ctRwE3t-39">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1270" y="1144" />
+              <mxPoint x="1270" y="1404" />
+            </Array>
+            <mxPoint x="1260" y="1420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-42" connectable="0" parent="r-96WGb4OpSe_ctRwE3t-34" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=16;" value="SI" vertex="1">
+          <mxGeometry relative="1" x="-0.2626" y="4" as="geometry">
+            <mxPoint x="-4" y="63" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-35" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="muestra &amp;lt; MAXIMO&lt;br&gt;y muestra &amp;gt; MINIMO" vertex="1">
+          <mxGeometry height="68" width="167.5" x="1016.25" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-36" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="r-96WGb4OpSe_ctRwE3t-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="1292" />
+              <mxPoint x="910" y="685" />
+            </Array>
+            <mxPoint x="960" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-37" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Ajustar rango" vertex="1">
+          <mxGeometry height="68" width="167.5" x="1016.25" y="1258" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-38" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="r-96WGb4OpSe_ctRwE3t-41" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-39" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Calcular resistencia&lt;br&gt;y unidad" vertex="1">
+          <mxGeometry height="68" width="167.5" x="1016.25" y="1370" as="geometry" />
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-40" edge="1" parent="1" source="r-96WGb4OpSe_ctRwE3t-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="910" y="1290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-96WGb4OpSe_ctRwE3t-41" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;" value="Enviar datos a MuestreoQueue" vertex="1">
+          <mxGeometry height="68" width="167.5" x="1016.25" y="1500" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
