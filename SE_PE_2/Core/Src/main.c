@@ -93,7 +93,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 384 * 4,
+  .stack_size = 300 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for inputsTask */
@@ -123,7 +123,7 @@ const osMessageQueueAttr_t uiQueue_attributes = {
 };
 /* Definitions for monitorQueue */
 osMessageQueueId_t monitorQueueHandle;
-uint8_t monitorQueueBuffer[ 1 * 56 ];
+uint8_t monitorQueueBuffer[ 1 * sizeof( MonitorData_t ) ];
 osStaticMessageQDef_t monitorQueueControlBlock;
 const osMessageQueueAttr_t monitorQueue_attributes = {
   .name = "monitorQueue",
@@ -264,7 +264,7 @@ int main(void)
   uiQueueHandle = osMessageQueueNew (10, 4, &uiQueue_attributes);
 
   /* creation of monitorQueue */
-  monitorQueueHandle = osMessageQueueNew (1, 56, &monitorQueue_attributes);
+  monitorQueueHandle = osMessageQueueNew (1, sizeof(MonitorData_t), &monitorQueue_attributes);
 
   /* creation of muestreoQueue */
   muestreoQueueHandle = osMessageQueueNew (4, sizeof(MuestreoQueue_t), &muestreoQueue_attributes);
