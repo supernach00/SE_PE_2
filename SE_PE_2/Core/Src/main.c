@@ -951,9 +951,6 @@ void StartDefaultTask(void *argument)
 					muestreoQueueSample.processed = (VALOR_RESISTOR_10K_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit);
 					muestreoQueueSample.unit = OHMS;
 				} else if (current_range == RANGE_1M) {
-//					muestreoQueueSample.processed = ((VALOR_RESISTOR_1M_OHMS * adc_16bit) / (VCC_16_BITS - adc_16bit)) / 1000;
-//					muestreoQueueSample.unit = KILO_OHMS;
-
 					// Tuve que hacer esto porque creo que estaba teniendo problemas con uint16_t
 					uint64_t numerador = (uint64_t)VALOR_RESISTOR_1M_OHMS * adc_16bit;
 					uint32_t denominador = VCC_16_BITS - adc_16bit;
@@ -967,10 +964,7 @@ void StartDefaultTask(void *argument)
 					muestreoQueueSample.unit = KILO_OHMS;
 				}
 
-
-//				HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 				osMessageQueuePut(muestreoQueueHandle, &muestreoQueueSample, 0, 0);
-//				HAL_GPIO_TogglePin(DEBUG_PIN_GPIO_Port, DEBUG_PIN_Pin);
 
 				// Volvemos a disparar para el próximo lote continuo
 				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
@@ -996,7 +990,7 @@ void StartDefaultTask(void *argument)
 			uint16_t adc_val = 4095;
 			uint32_t descarga_timeout = HAL_GetTick();
 
-			// El bucle romperá por descarga (<30) o por timeout (max 100ms)
+			// El bucle rompe por descarga (<30) o por timeout (max 100ms)
 			// esto es por si se llega a tnener una capacidad muy grande, que no se cuelgue acá
 			while(adc_val > 30 && (HAL_GetTick() - descarga_timeout < 100)) {
 				HAL_ADC_Start(&hadc1);
@@ -1009,9 +1003,9 @@ void StartDefaultTask(void *argument)
 
 			// CONFIGURAR NUEVA BASE DE TIEMPO
 			switch(current_time_base) {
-			case TIME_BASE_RAPIDA: __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_RAPIDO); break;
-			case TIME_BASE_MEDIA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_MEDIO); break;
-			case TIME_BASE_LENTA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_LENTO); break;
+			case TIME_BASE_RAPIDA: __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_RAPIDO); break; //100us
+			case TIME_BASE_MEDIA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_MEDIO); break; // 1ms
+			case TIME_BASE_LENTA:  __HAL_TIM_SET_AUTORELOAD(&htim3, TIM3_ARR_LENTO); break; //10ms
 			}
 			__HAL_TIM_SET_COUNTER(&htim3, 0);
 
@@ -1026,11 +1020,6 @@ void StartDefaultTask(void *argument)
 			HAL_TIM_Base_Start(&htim3); // El timer comienza a disparar el ADC
 
 			// INICIAR CARGA ELÉCTRICA
-//			if (current_range == RANGE_330R) HAL_GPIO_WritePin(GPIOB, GPIO330R_Pin, GPIO_PIN_SET);
-//			else if (current_range == RANGE_10K) HAL_GPIO_WritePin(GPIOB, GPIO10K_Pin, GPIO_PIN_SET);
-//			else if (current_range == RANGE_1M) HAL_GPIO_WritePin(GPIOB, GPIO1M_Pin, GPIO_PIN_SET);
-			// cambié esto con lo que hicimos en el TP pasado, porque
-			// me pareció mejor usar lo que ya habías hecho, que ya funcionaba
 			configurar_carga();
 
 			// Espera pasiva de buffer lleno (Con timeout de respaldo de 3s para evitar trabar el RTOS)
@@ -1086,7 +1075,6 @@ void StartDefaultTask(void *argument)
 				// ESTO ES SÓLO SI SE USA EL MODO DONDE SE IMPRIME EL BUFFER EN PANTALLA
 				// TODO: este retardo es importante, así no saturo el CPU
 				// con esta tarea, habría que ajustarlo con el logicAnalyzer capaz
-//				osDelay(500);
 			}
 
 		}
@@ -1179,6 +1167,8 @@ void encoderEntry(void *argument)
   /* Parametros debouncer boton */
   #define DEBOUNCER_MAX 6
   uint8_t contador_debouncer = 0;
+  int16_t boton_anterior = 0;
+  int16_t boton_actual = 0;
 
   /* Seteo el tag para el analizador logico */
   vTaskSetApplicationTaskTag( NULL, (void*) TAG_TASK_INPUTS);
@@ -1213,16 +1203,23 @@ void encoderEntry(void *argument)
 		osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
 	}
 
-	// Check boton TODO: mejorar el debounce, hice uno basicon. No complicarla igual xq queda feo.
-	if (!HAL_GPIO_ReadPin(BOTON_ENCODER_GPIO_Port, BOTON_ENCODER_Pin)){
+	// Check boton
+	boton_actual = HAL_GPIO_ReadPin(BOTON_ENCODER_GPIO_Port, BOTON_ENCODER_Pin);
 
-		contador_debouncer++;
+	if (boton_actual != boton_anterior) {
+	    contador_debouncer++;
 
-		if (contador_debouncer > DEBOUNCER_MAX){
-			contador_debouncer = 0;
-			evt = EV_BOTON_ENCODER;
-			osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
-		}
+	    if (contador_debouncer >= DEBOUNCER_MAX) {
+	        boton_anterior = boton_actual;
+	        contador_debouncer = 0;
+
+	        if (boton_actual == GPIO_PIN_RESET) {
+	            evt = EV_BOTON_ENCODER;
+	            osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
+	        }
+	    }
+	} else {
+	    contador_debouncer = 0;
 	}
 
 	vTaskDelayUntil(&last_tick, 20);

@@ -155,11 +155,6 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 				// TODO: aca actuaLizar datos
 				uint16_t converted_sample;
 				if (config->parametro == PARAMETRO_R) {
-					// TODO: habría que hacer algo así no?
-//					uint32_t fondo_escala;
-//					if (unit == OHMS) {
-//						fondo_escala = 10000;
-//					}
 					if (config->modo == MODO_MULTIPLE || sample_index < SSD1306_WIDTH){
 						for (uint8_t i = 0; i < 4; i++) {
 							if (data_monitor->muestreo_data[i].raw == 0) continue;
@@ -210,6 +205,7 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 					last_single_unit = data_monitor->muestreo_data->unit;
 				}
 
+				// Si se sobrepaso la pantalla, se limpia
 				if (sample_index > SSD1306_WIDTH && config->modo == MODO_MULTIPLE) {
 					sample_index = 0;
 					ui->ui_update_background = 1;
@@ -523,6 +519,7 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 			ui->ui_seleccion = 0;
 			ui->ui_update_background = 1;
 			ui->ui_update_sel = 1;
+			break;
 		} else if (evento == EV_UP) {
 			ui_up(ui, 1);
 			ui->ui_update_sel = 1;
@@ -562,6 +559,7 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 		if (evento == EV_BOTON_ENCODER){
 			ui->ui_estado = ESTADO_INICIO;
 			ui->ui_update_background = 1;
+			ui->ui_update_sel = 1;
 		} else if (evento == EV_NEW_SAMPLE) {
 			ui->ui_update_datos = 1;
 		}
