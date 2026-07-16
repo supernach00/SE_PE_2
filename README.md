@@ -3,12 +3,12 @@
 # TODO
 ## Si o si
 - [ ] Mirar los TODO que dejé en el código
-- [ ] Hacer diagramas
-- [ ] Hacer informe
-- [ ] Agregar Hardware y testear las mediciones.
+- [x] Hacer diagramas
+- [ ] Hacer informe (VER TODO) (faltaría poner el modo single y multiple, pero paja ahora)
+- [x] Agregar Hardware y testear las mediciones.
 - [ ] Agregar límites de los gráficos
-- [ ] Cambiar entre single y multiple (hacerlo funcional)
-- [ ] Hacer análisis de LogicAnalyzer
+- [x] Cambiar entre single y multiple (hacerlo funcional)
+- [x] Hacer análisis de LogicAnalyzer
 - [ ] Que sea capaz de medir un capacitor de 1000uF
 
 
