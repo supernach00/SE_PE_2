@@ -13,6 +13,11 @@ extern uint16_t adc_buffer[ADC_BUFFER_SIZE];
 //extern Bool auto_rango_enabled;
 uint8_t sample_index = 0;
 
+uint16_t last_single_value = 0;
+Unidad_t last_single_unit = 0;
+
+Bool painted_once = FALSE;
+
 //void ui_init(UI_t *ui, MonitorData_t *data_monitor){
 void ui_init(UI_t *ui){
 
@@ -155,20 +160,25 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 //					if (unit == OHMS) {
 //						fondo_escala = 10000;
 //					}
-					for (uint8_t i = 0; i < 4; i++) {
-						if (data_monitor->muestreo_data[i].raw == 0) continue;
-						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / 65535 + SCREEN_MIN_HEIGHT;
-						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
-						sample_index++;
+					if (config->modo == MODO_MULTIPLE || sample_index < SSD1306_WIDTH){
+						for (uint8_t i = 0; i < 4; i++) {
+							if (data_monitor->muestreo_data[i].raw == 0) continue;
+							converted_sample = (SSD1306_HEIGHT-SCREEN_MIN_HEIGHT)  - data_monitor->muestreo_data[i].raw * (SSD1306_HEIGHT-SCREEN_MIN_HEIGHT) / 65535 + SCREEN_MIN_HEIGHT;
+							SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
+							sample_index++;
+						}
 					}
-
 				} else if (config->parametro == PARAMETRO_C) {
 
-					for (uint8_t i = 0; i < 4; i++) {
-						if (data_monitor->muestreo_data[i].raw == 0) continue;
-						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
-						SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
-						sample_index++;
+					if (config->modo == MODO_MULTIPLE){
+						for (uint8_t i = 0; i < 4; i++) {
+							if (data_monitor->muestreo_data[i].raw == 0) continue;
+							//						converted_sample = SSD1306_HEIGHT  - data_monitor->muestreo_data[i].raw * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
+							converted_sample = (SSD1306_HEIGHT-SCREEN_MIN_HEIGHT)  - data_monitor->muestreo_data[i].raw * (SSD1306_HEIGHT-SCREEN_MIN_HEIGHT) / (4095) + SCREEN_MIN_HEIGHT;
+							SSD1306_DrawPixel(sample_index, converted_sample, SSD1306_COLOR_WHITE);
+							sample_index++;
+						}
+
 					}
 
 					// IMPORTANTE: una llamada a esto desde DefaultTask
@@ -180,34 +190,62 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 					// Acá lo que hago es iterar el loop con las muestras
 					// y las muestro en pantalla
 					// en realidad no entra todo el buffer,
-					// TODO: como podríamos hacer esto mejor??
-//					for (uint8_t i = 0; i < SSD1306_WIDTH; i++) {
-//						// En modo capacidad en maximo valor es el de 12 bits
-//						converted_sample = SSD1306_HEIGHT  - adc_buffer[i*2] * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
-//						SSD1306_DrawPixel(i, converted_sample, SSD1306_COLOR_WHITE);
-//						sample_index++;
-//					}
+					// TODO: ESTO NO ESTÁ FUNCIONANDO
+					if (!painted_once && sample_index < SSD1306_WIDTH && config->modo == MODO_SINGLE) {
+						for (uint8_t i = 0; i < SSD1306_WIDTH; i++) {
+							// En modo capacidad en maximo valor es el de 12 bits
+							converted_sample = SSD1306_HEIGHT  - adc_buffer[i*2] * SSD1306_HEIGHT / (4095) + SCREEN_MIN_HEIGHT;
+							SSD1306_DrawPixel(i, converted_sample, SSD1306_COLOR_WHITE);
+							sample_index++;
+						}
+						painted_once = TRUE;
+					}
 					// -------------------------------------------
 
 				}
 
-				if (sample_index > SSD1306_WIDTH) {
+				// se guarda la última muestra para el modo single
+				if (sample_index == (SSD1306_WIDTH-1) && config->modo == MODO_SINGLE) {
+					last_single_value = converted_sample;
+					last_single_unit = data_monitor->muestreo_data->unit;
+				}
+
+				if (sample_index > SSD1306_WIDTH && config->modo == MODO_MULTIPLE) {
 					sample_index = 0;
 					ui->ui_update_background = 1;
 				}
 
-				SSD1306_GotoXY(80, 52);
-				snprintf(val, sizeof(val), "%05d", data_monitor->muestreo_data->processed);
-				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
+				if (config->modo == MODO_MULTIPLE || sample_index < SSD1306_WIDTH) {
 
-//				SSD1306_GotoXY(108, 3);
-				switch (data_monitor->muestreo_data->unit) {
-				case OHMS: SSD1306_Puts("~", &Font_7x10, SSD1306_COLOR_WHITE); break;
-				case KILO_OHMS: SSD1306_Puts("K~", &Font_7x10, SSD1306_COLOR_WHITE); break;
-				case MEGA_OHMS: SSD1306_Puts("M~", &Font_7x10, SSD1306_COLOR_WHITE); break;
-				case MICRO_FARADIOS: SSD1306_Puts("uF", &Font_7x10, SSD1306_COLOR_WHITE); break;
-				case NANO_FARADIOS: SSD1306_Puts("nF", &Font_7x10, SSD1306_COLOR_WHITE); break;
-				case PICO_FARADIOS: SSD1306_Puts("pF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					SSD1306_GotoXY(80, 52);
+					snprintf(val, sizeof(val), "%05d", data_monitor->muestreo_data->processed);
+					SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
+
+					//				SSD1306_GotoXY(108, 3);
+					switch (data_monitor->muestreo_data->unit) {
+					case OHMS: SSD1306_Puts("~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case KILO_OHMS: SSD1306_Puts("K~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case MEGA_OHMS: SSD1306_Puts("M~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case MICRO_FARADIOS: SSD1306_Puts("uF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case NANO_FARADIOS: SSD1306_Puts("nF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case PICO_FARADIOS: SSD1306_Puts("pF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					}
+
+				} else if (config->modo == MODO_SINGLE && sample_index >= SSD1306_WIDTH) {
+
+					SSD1306_GotoXY(80, 52);
+					snprintf(val, sizeof(val), "%05d", last_single_value);
+					SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
+
+					switch (last_single_unit) {
+					case OHMS: SSD1306_Puts("~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case KILO_OHMS: SSD1306_Puts("K~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case MEGA_OHMS: SSD1306_Puts("M~", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case MICRO_FARADIOS: SSD1306_Puts("uF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case NANO_FARADIOS: SSD1306_Puts("nF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					case PICO_FARADIOS: SSD1306_Puts("pF", &Font_7x10, SSD1306_COLOR_WHITE); break;
+					}
+
 				}
 			}
 

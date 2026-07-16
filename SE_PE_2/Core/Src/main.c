@@ -159,8 +159,8 @@ UI_t ui1 = {
 };
 
 Config_t config1 = { // Configuracion default
-	.modo = MODO_MULTIPLE,
-	.parametro = PARAMETRO_C,
+	.modo = MODO_SINGLE,
+	.parametro = PARAMETRO_R,
 };
 
 /* USER CODE END PV */
@@ -894,6 +894,8 @@ void StartDefaultTask(void *argument)
 		// ====================================================================
 		if (config1.parametro == PARAMETRO_R)
 		{
+
+			// esto es por las dudas que no se haya incializado el DMA
 			if (hadc1.State == HAL_ADC_STATE_READY) {
 				HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_buffer, ADC_BUFFER_SIZE);
 				HAL_TIM_Base_Start(&htim3);
@@ -1032,7 +1034,7 @@ void StartDefaultTask(void *argument)
 			configurar_carga();
 
 			// Espera pasiva de buffer lleno (Con timeout de respaldo de 3s para evitar trabar el RTOS)
-			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
+			uint32_t notificado = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20000));
 
 			if (notificado == 0) {
 				// TODO: cambiar base de tiempo
