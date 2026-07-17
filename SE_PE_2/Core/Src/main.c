@@ -93,7 +93,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 300 * 4,
+  .stack_size = 384 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for inputsTask */
@@ -159,7 +159,7 @@ UI_t ui1 = {
 };
 
 Config_t config1 = { // Configuracion default
-	.modo = MODO_SINGLE,
+	.modo = MODO_MULTIPLE,
 	.parametro = PARAMETRO_R,
 };
 
@@ -1117,7 +1117,11 @@ void oledEntry(void *argument)
 	/* Leo todas las colas */
 	/*uiQueue, cola de eventos, actualiza estado del sistema*/
 	while (osMessageQueueGet(uiQueueHandle, &evt, NULL, 0) == osOK){
-			ui_FSM_switch(&ui1, &config1, evt);
+		if (evt == EV_HEAP_ADVERTENCIA) {
+			ui1.ui_estado = ESTADO_ALARMA;
+		}
+//		ui1.ui_estado = ESTADO_ALARMA;
+		ui_FSM_switch(&ui1, &config1, evt);
 	}
 
 	/* Leo monitorQueue, actualiza datos de diagnostico*/
@@ -1318,6 +1322,11 @@ void monitorEntry(void *argument)
 		 FU_acc = 0;
 		 if (ui1.ui_estado == ESTADO_DIAG )
 			 ui1.ui_update_datos = 1;
+
+		 if (fu >= 99) {
+			 Evento_e evt = EV_FU_ADVERTENCIA;
+			 osMessageQueuePut(uiQueueHandle, &evt, 0, 0);
+		 }
 	 }
 
 	 /* Envio el paquete a ui a traves de monitorQueue */

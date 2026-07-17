@@ -6,7 +6,7 @@
 #include "fonts.h"
 
 // esta es la distancia mínima del borde superior
-#define SCREEN_MIN_HEIGHT (15)
+#define SCREEN_MIN_HEIGHT (12)
 
 extern uint16_t adc_buffer[ADC_BUFFER_SIZE];
 
@@ -80,16 +80,17 @@ void ui_update_oled(UI_t *ui, Config_t *config, MonitorData_t *data_monitor){
 
 				SSD1306_DrawBitmap(0, 0, diag_sistema_bmp, 128, 64, 1);
 
-				SSD1306_GotoXY(50, 22);
-				snprintf(val, sizeof(val), "%ld/%ld", data_monitor->system_data.sys_heap_min, data_monitor->system_data.sys_heap_free);
-				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
+			}
+			if (ui->ui_update_datos){
+				SSD1306_DrawFilledRectangle(49, 31, 40, 10, 0); // Cuadrado negro para limpiarlos datos viejos.
 
 				SSD1306_GotoXY(50, 32);
 				snprintf(val, sizeof(val), "%d%%", data_monitor->system_data.fu);
 				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
-			}
-			if (ui->ui_update_datos){
-				SSD1306_DrawFilledRectangle(49, 31, 40, 10, 0); // Cuadrado negro para limpiarlos datos viejos.
+
+				SSD1306_GotoXY(50, 22);
+				snprintf(val, sizeof(val), "%ld/%ld", data_monitor->system_data.sys_heap_min, data_monitor->system_data.sys_heap_free);
+				SSD1306_Puts(val, &Font_7x10, SSD1306_COLOR_WHITE);
 
 				SSD1306_GotoXY(50, 32);
 				snprintf(val, sizeof(val), "%d%%", data_monitor->system_data.fu);
@@ -564,6 +565,21 @@ void ui_FSM_switch(UI_t *ui, Config_t *config, Evento_e evento){
 			ui->ui_update_datos = 1;
 		}
 	break;
+
+	case ESTADO_ALARMA:
+
+		SSD1306_Clear();
+		SSD1306_GotoXY(20, SSD1306_HEIGHT/2);
+		//			snprintf(val, sizeof(val), "%05d", last_single_value);
+		SSD1306_Puts("ALARMA!!!", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(15, SSD1306_HEIGHT/2+10);
+		SSD1306_Puts("REINICIE DISP", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+		while(1) {
+
+		}
+
+			break;
 
 	default:
 		break;
