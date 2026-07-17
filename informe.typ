@@ -256,6 +256,18 @@ En el *bucle*:\
 
 120Bytes TCB + 1200Bytes (asginado basado en stack analyzer) = TOTAL 1320Bytes\
 
+  = Notificaciones de fallo
+
+  Los fallos por exceso de uso de CPU y overflow de stack, se hicieron con mensajes a través de la cola *uiQueue*, envíando el mensaje correspondiente, y luego la UI lo maneja simplemente bloqueando el sistema, y mostrando el mensaje de error al usuario.
+
+  = Posibles mejoras
+
+  Se nos ocurrieron varias mejoras, pero por cuestiones de tiempo no se hicieron las implementaciones:
+  - Un modo single que muestre el transitorio de la capcidad (básicamente una subida de tensión del RC).
+  - Un factor de amplificación de la señal (multiplicar las muestras por un valor).
+  - Hacer una PCB para conectaro todo.
+  - Que el rango de capacidad también cambie las resistencias, para medir capacidades más grandes y no tener que esperar tanto tiempo.
+
   = Bibliografía
 
   - #lk("https://ww1.microchip.com/downloads/en/Appnotes/Achieving%20Higher%20ADC%20Resolution%20Using%20Oversampling%2001152A.pdf", "https://ww1.microchip.com/downloads/en/Appnotes/Achieving%20Higher%20ADC%20Resolution%20Using%20Oversampling%2001152A.pdf")
